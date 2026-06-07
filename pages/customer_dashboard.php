@@ -216,8 +216,7 @@ $phone = $_SESSION['username'];
 
   <!-- Client-side script to fetch data dynamically -->
   <script>
-    <?php require_once __DIR__ . '/../config.php'; ?>
-    window.BACKEND_URL = '<?php echo BACKEND_URL; ?>/api';
+    window.BACKEND_URL = 'http://127.0.0.1:8000/api';
     window.JWT_TOKEN = '<?php echo $_SESSION["jwt_token"]; ?>';
     
     document.addEventListener('DOMContentLoaded', () => {

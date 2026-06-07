@@ -6,8 +6,7 @@
 
 <!-- Core JavaScript Configurations -->
 <script>
-  <?php require_once __DIR__ . '/../config.php'; ?>
-  window.BACKEND_URL = '<?php echo BACKEND_URL; ?>/api';
+  window.BACKEND_URL = 'http://127.0.0.1:8000/api';
   window.JWT_TOKEN = '<?php echo isset($_SESSION["jwt_token"]) ? $_SESSION["jwt_token"] : ""; ?>';
   window.CURRENT_USER_ID = '<?php echo isset($_SESSION["user_id"]) ? $_SESSION["user_id"] : ""; ?>';
   window.CURRENT_USER_ROLE = '<?php echo isset($_SESSION["role"]) ? $_SESSION["role"] : ""; ?>';
