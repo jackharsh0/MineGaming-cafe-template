@@ -92,7 +92,9 @@ CREATE TABLE `game_sessions` (
   FOREIGN KEY (`player_id`) REFERENCES `players`(`id`) ON DELETE SET NULL,
   FOREIGN KEY (`created_by`) REFERENCES `users_admin`(`id`),
   INDEX idx_status (`status`),
-  INDEX idx_times (`start_time`, `end_time`)
+  INDEX idx_times (`start_time`, `end_time`),
+  INDEX idx_player_id (`player_id`),
+  INDEX idx_station_id (`station_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- 6. inventory
@@ -124,7 +126,10 @@ CREATE TABLE `pos_sales` (
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (`session_id`) REFERENCES `game_sessions`(`id`) ON DELETE SET NULL,
   FOREIGN KEY (`player_id`) REFERENCES `players`(`id`) ON DELETE SET NULL,
-  FOREIGN KEY (`created_by`) REFERENCES `users_admin`(`id`)
+  FOREIGN KEY (`created_by`) REFERENCES `users_admin`(`id`),
+  INDEX idx_player_id (`player_id`),
+  INDEX idx_session_id (`session_id`),
+  INDEX idx_created_at (`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- 8. pos_sale_items
@@ -136,7 +141,9 @@ CREATE TABLE `pos_sale_items` (
   `unit_price` DECIMAL(10,2) NOT NULL,
   `total_price` DECIMAL(10,2) NOT NULL,
   FOREIGN KEY (`sale_id`) REFERENCES `pos_sales`(`id`) ON DELETE CASCADE,
-  FOREIGN KEY (`item_id`) REFERENCES `inventory`(`id`) ON DELETE CASCADE
+  FOREIGN KEY (`item_id`) REFERENCES `inventory`(`id`) ON DELETE CASCADE,
+  INDEX idx_sale_id (`sale_id`),
+  INDEX idx_item_id (`item_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- 9. appointments
@@ -151,7 +158,8 @@ CREATE TABLE `appointments` (
   `notes` TEXT DEFAULT NULL,
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (`station_id`) REFERENCES `stations`(`id`) ON DELETE CASCADE,
-  INDEX idx_times (`start_time`, `end_time`)
+  INDEX idx_times (`start_time`, `end_time`),
+  INDEX idx_station_id (`station_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- 10. audit_logs
@@ -161,7 +169,9 @@ CREATE TABLE `audit_logs` (
   `action` VARCHAR(100) NOT NULL,
   `details` TEXT DEFAULT NULL,
   `timestamp` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (`user_id`) REFERENCES `users_admin`(`id`)
+  FOREIGN KEY (`user_id`) REFERENCES `users_admin`(`id`),
+  INDEX idx_user_id (`user_id`),
+  INDEX idx_timestamp (`timestamp`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- 11. coupons
