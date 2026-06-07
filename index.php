@@ -1,5 +1,6 @@
 <?php
 session_start();
+require_once 'config.php';
 
 $isLoggedIn = isset($_SESSION['jwt_token']);
 $role = $_SESSION['role'] ?? '';
@@ -416,9 +417,9 @@ if ($isLoggedIn) {
 
   <!-- Real-time Status Board and Appointment Booking Script -->
   <script>
-    const HOST = window.location.hostname;
-    const PUBLIC_STATUS_API = `http://${HOST}:8000/api/stations/public-status`;
-    const APPOINTMENTS_API = `http://${HOST}:8000/api/appointments`;
+    const BACKEND_URL = '<?php echo BACKEND_URL; ?>';
+    const PUBLIC_STATUS_API = `${BACKEND_URL}/api/stations/public-status`;
+    const APPOINTMENTS_API = `${BACKEND_URL}/api/appointments`;
 
     let allStations = [];
     let currentFilter = 'ALL';
