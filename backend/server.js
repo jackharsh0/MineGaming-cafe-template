@@ -183,7 +183,7 @@ setInterval(async () => {
   } catch (err) {
     console.error('[Auto-Lock/Pause Error] Outer query failed:', err);
   }
-}, 5000);
+}, 15000);
 
 // 2. Active Session Countdown / Count-up SSE Ticker Loop
 setInterval(async () => {
@@ -249,7 +249,7 @@ setInterval(async () => {
   } catch (err) {
     console.error('[SSE Ticker Error]:', err);
   }
-}, 2000);
+}, 8000);
 
 
 // Start server

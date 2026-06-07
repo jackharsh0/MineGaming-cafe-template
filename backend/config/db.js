@@ -10,7 +10,7 @@ const pool = mysql.createPool({
   password: process.env.DB_PASS !== undefined ? process.env.DB_PASS : '',
   database: process.env.DB_NAME || 'gaming_zone',
   waitForConnections: true,
-  connectionLimit: 10,
+  connectionLimit: 25,
   queueLimit: 0
 });
 
