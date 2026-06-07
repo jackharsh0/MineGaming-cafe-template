@@ -1,5 +1,6 @@
 <?php
 session_start();
+require_once '../config.php';
 
 $error = '';
 $success = '';
@@ -22,7 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if (!empty($username) && !empty($password)) {
             // 1. Try Operator Admin Login first
-            $url = 'http://127.0.0.1:8000/api/auth/login';
+            $url = BACKEND_URL . '/api/auth/login';
             $data = array('username' => $username, 'password' => $password);
             
             $options = array(
@@ -50,7 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 exit();
             } else {
                 // 2. Try Customer Login (using same credentials: username acts as phone number)
-                $url = 'http://127.0.0.1:8000/api/auth/customer/login';
+                $url = BACKEND_URL . '/api/auth/customer/login';
                 $data = array('phone' => $username, 'password' => $password);
                 
                 $options = array(
@@ -98,7 +99,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if (!empty($name) && !empty($phone) && !empty($password)) {
             // Contact Node.js Backend API
-            $url = 'http://127.0.0.1:8000/api/auth/customer/register';
+            $url = BACKEND_URL . '/api/auth/customer/register';
             
             $data = array('name' => $name, 'phone' => $phone, 'email' => $email ?: null, 'password' => $password);
             $options = array(
