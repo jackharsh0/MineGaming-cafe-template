@@ -31,7 +31,7 @@ if ($isLocalhost) {
     }
 }
 
-// ── Settings Loader ──────────────────────────────────────────────
+// Settings loader
 $settings_path = __DIR__ . '/backend/config/settings.json';
 $APP_SETTINGS = [];
 

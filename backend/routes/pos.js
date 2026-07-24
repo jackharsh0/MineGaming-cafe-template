@@ -75,7 +75,7 @@ router.post('/checkout', verifyToken, validateBody(posCheckoutSchema), async (re
     let subtotal = 0.00;
     const saleItemsToInsert = [];
 
-    // 1. Calculate item costs and verify/deduct inventory stock
+    // Verify inventory and calculate costs
     for (const item of items) {
       const [inventoryRows] = await conn.query(
         'SELECT name, price, stock_qty FROM inventory WHERE id = ? FOR UPDATE',
@@ -157,7 +157,7 @@ router.post('/checkout', verifyToken, validateBody(posCheckoutSchema), async (re
       );
     }
 
-    // 2. Insert POS sale record
+    // Insert sale record
     const [saleResult] = await conn.query(
       `INSERT INTO pos_sales 
        (session_id, player_id, sale_type, subtotal, tax, discount, total, payment_method, play_hours_amount, status, created_by, payment_intent_id, transaction_id)
@@ -181,7 +181,7 @@ router.post('/checkout', verifyToken, validateBody(posCheckoutSchema), async (re
 
     const saleId = saleResult.insertId;
 
-    // 3. Insert sale items
+    // Insert sale items
     for (const sItem of saleItemsToInsert) {
       await conn.query(
         `INSERT INTO pos_sale_items (sale_id, item_id, quantity, unit_price, total_price) 
@@ -328,7 +328,7 @@ router.delete('/sale-item/:id', verifyToken, async (req, res) => {
   try {
     await conn.beginTransaction();
 
-    // 1. Get sale item details
+    // Sale item details
     const [items] = await conn.query(
       'SELECT psi.*, ps.id AS sale_id, ps.status AS sale_status FROM pos_sale_items psi JOIN pos_sales ps ON psi.sale_id = ps.id WHERE psi.id = ? FOR UPDATE',
       [id]
@@ -343,7 +343,7 @@ router.delete('/sale-item/:id', verifyToken, async (req, res) => {
       throw new Error('Cannot modify a completed or paid order');
     }
 
-    // 2. Refund inventory stock (don't refund placeholder item id 999 which is the console session charge)
+    // Refund inventory (skip placeholder item 999)
     if (item.item_id !== 999) {
       await conn.query(
         'UPDATE inventory SET stock_qty = stock_qty + ? WHERE id = ?',
@@ -351,10 +351,10 @@ router.delete('/sale-item/:id', verifyToken, async (req, res) => {
       );
     }
 
-    // 3. Delete the sale item
+    // Delete sale item
     await conn.query('DELETE FROM pos_sale_items WHERE id = ?', [id]);
 
-    // 4. Update parent sale totals
+    // Update sale totals
     const [remaining] = await conn.query(
       'SELECT SUM(total_price) AS subtotal FROM pos_sale_items WHERE sale_id = ?',
       [item.sale_id]

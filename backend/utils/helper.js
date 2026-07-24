@@ -7,8 +7,7 @@ const logAudit = async (userId, action, details) => {
       'INSERT INTO audit_logs (user_id, action, details) VALUES (?, ?, ?)',
       [userId, action, details]
     );
-    // Broadcast via SSE activity feed
-    broadcast('activity_feed', {
+  broadcast('activity_feed', {
       timestamp: new Date().toISOString(),
       userId,
       action,

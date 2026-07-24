@@ -8,7 +8,7 @@ router.get('/summary', verifyToken, async (req, res) => {
   try {
     const today = new Date().toISOString().split('T')[0];
 
-    // 1. Gross revenue today (completed sessions + paid direct sales)
+    // Gross revenue today
     const [sessionRev] = await pool.query(
       'SELECT SUM(total_cost) AS total FROM game_sessions WHERE status = "Completed" AND DATE(end_time) = ?',
       [today]
@@ -20,7 +20,7 @@ router.get('/summary', verifyToken, async (req, res) => {
 
     const grossRevenue = parseFloat(sessionRev[0].total || 0) + parseFloat(posRev[0].total || 0);
 
-    // 2. Occupancy rate (% of stations currently occupied)
+    // Occupancy rate
     const [totalStations] = await pool.query('SELECT COUNT(*) AS count FROM stations WHERE status != "Maintenance" AND is_deleted = 0');
     const [occupiedStations] = await pool.query('SELECT COUNT(*) AS count FROM stations WHERE status = "Occupied" AND is_deleted = 0');
 
@@ -28,7 +28,7 @@ router.get('/summary', verifyToken, async (req, res) => {
     const occupiedCount = occupiedStations[0].count;
     const occupancyRate = totalCount > 0 ? Math.round((occupiedCount / totalCount) * 100) : 0;
 
-    // 3. Low stock count
+    // Low stock count
     const [lowStock] = await pool.query('SELECT COUNT(*) AS count FROM inventory WHERE stock_qty <= low_stock_threshold');
 
     res.json({
@@ -97,7 +97,7 @@ router.get('/report', verifyToken, requireRole(['SuperAdmin', 'Manager']), async
   const targetDate = date || new Date().toISOString().split('T')[0];
 
   try {
-    // 1. Session Billing Summary
+    // Session billing summary
     const [sessions] = await pool.query(
       `SELECT COUNT(*) AS count, SUM(total_cost) AS total, SUM(discount_applied) AS discount, SUM(tax_applied) AS tax
        FROM game_sessions 
@@ -105,7 +105,7 @@ router.get('/report', verifyToken, requireRole(['SuperAdmin', 'Manager']), async
       [targetDate]
     );
 
-    // 2. POS Sales Summary
+    // POS sales summary
     const [pos] = await pool.query(
       `SELECT COUNT(*) AS count, SUM(total) AS total, SUM(discount) AS discount, SUM(tax) AS tax
        FROM pos_sales 
@@ -113,7 +113,7 @@ router.get('/report', verifyToken, requireRole(['SuperAdmin', 'Manager']), async
       [targetDate]
     );
 
-    // 3. Shift logs for the day
+    // Shift logs
     const [shifts] = await pool.query(
       `SELECT s.*, u.full_name AS staff_name 
        FROM shift_logs s
@@ -158,7 +158,7 @@ router.get('/report', verifyToken, requireRole(['SuperAdmin', 'Manager']), async
 // Get detailed revenue statistics (daily, weekly, monthly), graph trend data, and transaction logs
 router.get('/revenue-details', verifyToken, requireRole(['SuperAdmin', 'Manager']), async (req, res) => {
   try {
-    // 1. Daily, Weekly, and Monthly totals
+    // Daily, weekly, monthly totals
     const [dailyRows] = await pool.query(`
       SELECT SUM(amount) AS total FROM (
         SELECT total_cost AS amount FROM game_sessions WHERE status = 'Completed' AND DATE(end_time) = CURDATE()
@@ -183,7 +183,7 @@ router.get('/revenue-details', verifyToken, requireRole(['SuperAdmin', 'Manager'
       ) t
     `);
 
-    // 2. Graph data: last 14 days of revenue
+    // 14-day revenue graph
     const [graphRows] = await pool.query(`
       SELECT date, SUM(amount) AS total FROM (
         SELECT DATE(end_time) AS date, total_cost AS amount FROM game_sessions WHERE status = 'Completed' AND end_time >= DATE_SUB(NOW(), INTERVAL 14 DAY)
@@ -194,7 +194,7 @@ router.get('/revenue-details', verifyToken, requireRole(['SuperAdmin', 'Manager'
       ORDER BY date ASC
     `);
 
-    // 3. Transactions list: last 100 payments
+    // Recent transactions
     const [transactionRows] = await pool.query(`
       SELECT * FROM (
         SELECT 
@@ -260,7 +260,7 @@ router.get('/receipt/:type/:refId', verifyToken, requireRole(['SuperAdmin', 'Man
 
   try {
     if (type === 'Game Session') {
-      // 1. Fetch game session details
+      // Session details
       const [sessions] = await pool.query(`
         SELECT s.*, st.name AS station_name, st.type AS station_type, 
                p.name AS player_name, p.phone AS player_phone, p.loyalty_tier, 
@@ -278,7 +278,7 @@ router.get('/receipt/:type/:refId', verifyToken, requireRole(['SuperAdmin', 'Man
 
       const session = sessions[0];
 
-      // 2. Fetch linked paid POS sales items
+      // Linked POS items
       const [posItems] = await pool.query(`
         SELECT psi.quantity, psi.unit_price, psi.total_price, i.name AS item_name
         FROM pos_sale_items psi
@@ -346,7 +346,7 @@ router.get('/receipt/:type/:refId', verifyToken, requireRole(['SuperAdmin', 'Man
       });
 
     } else if (type === 'Cafe/Prepaid') {
-      // 1. Fetch POS Sale details
+      // Sale details
       const [sales] = await pool.query(`
         SELECT ps.*, p.name AS player_name, p.phone AS player_phone, p.loyalty_tier,
                u.full_name AS staff_name
@@ -362,7 +362,7 @@ router.get('/receipt/:type/:refId', verifyToken, requireRole(['SuperAdmin', 'Man
 
       const sale = sales[0];
 
-      // 2. Fetch POS items
+      // Sale items
       const [posItems] = await pool.query(`
         SELECT psi.quantity, psi.unit_price, psi.total_price, i.name AS item_name
         FROM pos_sale_items psi

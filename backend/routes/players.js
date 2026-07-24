@@ -202,13 +202,13 @@ router.patch('/:id/blacklist', verifyToken, requireRole(['SuperAdmin', 'Manager'
 router.get('/:id/history', verifyToken, async (req, res) => {
   const { id } = req.params;
   try {
-    // 1. Get player info
+    // Player info
     const [playerRows] = await pool.query('SELECT * FROM players WHERE id = ?', [id]);
     if (playerRows.length === 0) {
       return res.status(404).json({ success: false, message: 'Player not found' });
     }
 
-    // 2. Get session history
+    // Session history
     const [sessions] = await pool.query(
       `SELECT s.id, st.name AS station_name, s.session_type, s.start_time, s.end_time, s.total_cost, s.status
        FROM game_sessions s

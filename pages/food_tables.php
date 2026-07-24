@@ -311,9 +311,7 @@ async function endTableSession(tableId, tableName) {
   }
 }
 
-// ==========================================
-// MERGE TO TERMINAL — Dining Table → Terminal
-// ==========================================
+// Merge dining table to terminal
 async function triggerMergeToTerminal(tableId, tableName) {
   // Fetch the active session for this table first
   try {

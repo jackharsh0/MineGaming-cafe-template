@@ -35,7 +35,7 @@ router.post('/', verifyTokenOptional, async (req, res) => {
   }
 
   try {
-    // 1. Check double-booking conflict
+    // Check double-booking
     const [conflict] = await pool.query(
       `SELECT id FROM appointments 
        WHERE station_id = ? 
@@ -52,7 +52,7 @@ router.post('/', verifyTokenOptional, async (req, res) => {
       });
     }
 
-    // 2. Insert appointment
+    // Insert appointment
     const [result] = await pool.query(
       `INSERT INTO appointments (player_name, player_phone, station_id, start_time, end_time, status, notes)
        VALUES (?, ?, ?, ?, ?, 'Pending', ?)`,

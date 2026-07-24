@@ -175,9 +175,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Web Audio API Synthesizer (SoundEffects) is defined below.
 
-// ==========================================
-// Web Audio API Synthesizer (SoundEffects)
-// ==========================================
+// Web Audio API synthesizer
 const SoundEffects = {
   ctx: null,
 
@@ -190,7 +188,7 @@ const SoundEffects = {
     }
   },
 
-  // Helper to play a single synthesized tone with exponential decay
+  // Play a synthesized tone
   playTone(freq, type, duration, startTime, volume = 0.5) {
     try {
       this.init();
@@ -215,7 +213,7 @@ const SoundEffects = {
     }
   },
 
-  // Loud retro alarm arpeggio for timer ends
+  // Timer ended sound
   playTimerEnded() {
     try {
       this.init();
@@ -237,7 +235,7 @@ const SoundEffects = {
     }
   },
 
-  // Rich retro-futuristic synth melody for appointment requests
+  // New appointment sound
   playNewAppointment() {
     try {
       this.init();
@@ -262,7 +260,7 @@ const SoundEffects = {
   }
 };
 
-// Initialize audio context on any user click interaction (browser security policy bypass)
+  // Initialize audio on click (browser autoplay policy)
 document.addEventListener('click', () => {
   SoundEffects.init();
 }, { passive: true });
@@ -364,7 +362,7 @@ window.initMemberSlider = function(targetId, valueType = 'id', allowGuest = true
 
     cardsContainer.innerHTML = '';
 
-    // 1. Render Guest Card (if allowed)
+    // Render guest card
     if (allowGuest && !query) {
       const guestCard = document.createElement('div');
       guestCard.className = `flex-shrink-0 w-28 p-2 rounded border cursor-pointer flex flex-col items-center justify-center text-center transition-all duration-300 hover-3d-push `;
@@ -391,7 +389,7 @@ window.initMemberSlider = function(targetId, valueType = 'id', allowGuest = true
       cardsContainer.appendChild(guestCard);
     }
 
-    // 2. Render Player Cards
+    // Render player cards
     filtered.forEach(player => {
       const playerVal = valueType === 'phone' ? player.phone : player.id;
       const isSelected = String(selectedValue) === String(playerVal) || String(selectValueOnLoad) === String(playerVal);
@@ -435,7 +433,7 @@ window.initMemberSlider = function(targetId, valueType = 'id', allowGuest = true
       cardsContainer.appendChild(card);
     });
 
-    // 3. Render Direct Add Card if query is a phone number and not exactly matched
+    // Direct add card for phone number queries
     const cleanedQuery = query.replace(/[^0-9+]/g, '');
     const isNumericQuery = /^\+?[0-9]{4,15}$/.test(cleanedQuery);
     if (isNumericQuery && !isDisabled) {

@@ -1,0 +1,66 @@
+{
+  "brand": {
+    "business_name": "Soleila",
+    "tagline": "Jodhpur's Premier Gaming & Recreation Lounge",
+    "hero_subtitle": "Where Console Meets the Felt",
+    "address": "Sardarpura, Jodhpur, Rajasthan",
+    "phone": "+91 98765-43210",
+    "email": "hello@soleila.in",
+    "est_year": "2024",
+    "currency_symbol": "₹",
+    "receipt_footer": "THANK YOU FOR PLAYING AT SOLEILA!",
+    "copyright_text": "All rights reserved.",
+    "logo_url": ""
+  },
+  "website": {
+    "hero_title": "Where Console Meets the Felt",
+    "hero_subtitle": "PlayStation 5, Xbox Series X, and professional pool tables. Grab a drink, rack 'em up, and play all night.",
+    "about_text": "",
+    "fuel_bar_text": "Order snacks, drinks, and ramen directly to your station through the lounge attendant.",
+    "opening_hours": {
+      "monday": {"open": "10:00", "close": "23:00"},
+      "tuesday": {"open": "10:00", "close": "23:00"},
+      "wednesday": {"open": "10:00", "close": "23:00"},
+      "thursday": {"open": "10:00", "close": "23:00"},
+      "friday": {"open": "10:00", "close": "02:00"},
+      "saturday": {"open": "10:00", "close": "02:00"},
+      "sunday": {"open": "12:00", "close": "22:00"}
+    },
+    "holiday_mode": false,
+    "sections_visible": {
+      "hero": true, "live_status": true, "pricing": true,
+      "booking": true, "loyalty": true, "cafe": true
+    },
+    "loyalty_tier_descriptions": {
+      "bronze": "Standard level upon registration. 5% off all sessions.",
+      "silver": "Unlocked at 100 loyalty points. 10% off plus priority bookings.",
+      "gold": "Unlocked at 300 loyalty points. 15% off, free tournament entry, priority seating."
+    },
+    "default_food_items": [
+      {"icon": "🥤", "name": "Monster Energy", "price": 3.00},
+      {"icon": "🥤", "name": "Red Bull", "price": 3.50},
+      {"icon": "🍜", "name": "Shin Ramyun", "price": 4.00},
+      {"icon": "🍿", "name": "Chips Pack", "price": 1.50},
+      {"icon": "☕", "name": "Cold Coffee", "price": 2.50},
+      {"icon": "🍫", "name": "Chocolate Bar", "price": 2.00}
+    ]
+  },
+  "stations": {
+    "display_names": {
+      "PS5": "PlayStation 5", "PS4": "PlayStation 4",
+      "Xbox": "Xbox Series X", "Pool": "Pool Table",
+      "Dining": "Dining Table", "VR": "VR Station",
+      "Other": "Other", "PC": "PC Station"
+    }
+  },
+  "system": {
+    "page_title": "Soleila - Jodhpur's Premier Lounge",
+    "meta_description": "Premium gaming lounge in Jodhpur with PS5, Xbox, and professional pool tables.",
+    "og_image_url": "",
+    "maintenance_mode": false,
+    "timezone": "Asia/Kolkata",
+    "date_format": "d/m/Y",
+    "time_format": "H:i",
+    "auto_backup": false
+  }
+}

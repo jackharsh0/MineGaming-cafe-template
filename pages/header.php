@@ -7,7 +7,7 @@ require_once __DIR__ . '/../config.php';
 
 $current_page = basename($_SERVER['PHP_SELF']);
 
-// 1. Route authentication & permissions checks
+// Authentication & permissions
 $public_pages = ['login.php', 'customer_login.php'];
 
 if (!in_array($current_page, $public_pages)) {

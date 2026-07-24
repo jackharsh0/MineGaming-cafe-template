@@ -147,16 +147,16 @@ router.delete('/:id', verifyToken, requireRole(['SuperAdmin']), async (req, res)
     }
     const username = userRows[0].username;
 
-    // 1. Reassign game sessions to default admin
+    // Reassign sessions
     await pool.query('UPDATE game_sessions SET created_by = ? WHERE created_by = ?', [defaultAdminId, id]);
 
-    // 2. Reassign POS sales to default admin
+    // Reassign POS sales
     await pool.query('UPDATE pos_sales SET created_by = ? WHERE created_by = ?', [defaultAdminId, id]);
 
-    // 3. Delete related audit logs
+    // Delete audit logs
     await pool.query('DELETE FROM audit_logs WHERE user_id = ?', [id]);
 
-    // 4. Completely delete the user account
+    // Delete user account
     await pool.query('DELETE FROM users_admin WHERE id = ?', [id]);
 
     await logAudit(req.user.id, 'User Delete', `Completely deleted user account: ${username}`);

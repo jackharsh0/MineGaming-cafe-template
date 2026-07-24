@@ -36,7 +36,6 @@ router.post('/start', verifyToken, async (req, res) => {
   try {
     await conn.beginTransaction();
 
-    // 1. Verify station is Available
     const [stations] = await conn.query('SELECT name, type, status FROM stations WHERE id = ? FOR UPDATE', [stationId]);
     if (stations.length === 0) {
       return res.status(404).json({ success: false, message: 'Station not found' });
@@ -49,7 +48,6 @@ router.post('/start', verifyToken, async (req, res) => {
       return res.status(400).json({ success: false, message: `Station is currently ${station.status.toLowerCase()}` });
     }
 
-    // 2. Verify player if selected
     let player = null;
     if (playerId) {
       const [players] = await conn.query('SELECT * FROM players WHERE id = ? FOR UPDATE', [playerId]);
@@ -62,7 +60,6 @@ router.post('/start', verifyToken, async (req, res) => {
       }
     }
 
-    // 3. Determine pricing rules
     const [rates] = await conn.query('SELECT * FROM pricing_rules WHERE station_type = ?', [station.type]);
     if (rates.length === 0) {
       return res.status(500).json({ success: false, message: 'No pricing rule defined for this station type' });
@@ -74,7 +71,6 @@ router.post('/start', verifyToken, async (req, res) => {
     let targetEndTime = null;
     let totalCost = 0.00;
 
-    // 4. Handle Prepaid vs Postpaid
     if (sessionType === 'Prepaid') {
       let calcDurationMinutes = 0;
       if (prepaidAmount && parseFloat(prepaidAmount) > 0) {
@@ -137,7 +133,6 @@ router.post('/start', verifyToken, async (req, res) => {
       }
     }
 
-    // 5. Insert Session
     const [result] = await conn.query(
       `INSERT INTO game_sessions 
        (station_id, player_id, session_type, start_time, target_end_time, hourly_rate, controller_count, total_cost, status, created_by, payment_method)
@@ -145,7 +140,6 @@ router.post('/start', verifyToken, async (req, res) => {
       [stationId, playerId || null, sessionType, targetEndTime, finalHourlyRate, controllerCount || 1, totalCost, req.user.id, sessionType === 'Prepaid' ? (paymentMethod || 'Cash') : null]
     );
 
-    // 6. Update Station Status
     await conn.query('UPDATE stations SET status = "Occupied" WHERE id = ?', [stationId]);
 
     await conn.commit();
@@ -303,7 +297,7 @@ router.post('/:id/transfer', verifyToken, async (req, res) => {
   const { targetStationId } = req.body;
 
   try {
-    // 1. Get active session details
+    // Active session details
     const [sessions] = await pool.query(
       `SELECT s.*, st.name AS source_name, st.type AS source_type, p.loyalty_tier
        FROM game_sessions s 
@@ -317,7 +311,7 @@ router.post('/:id/transfer', verifyToken, async (req, res) => {
     }
     const session = sessions[0];
 
-    // 2. Get target station details
+    // Target station details
     const [targets] = await pool.query('SELECT name, type, status FROM stations WHERE id = ?', [targetStationId]);
     if (targets.length === 0) {
       return res.status(404).json({ success: false, message: 'Target station not found' });
@@ -327,7 +321,7 @@ router.post('/:id/transfer', verifyToken, async (req, res) => {
       return res.status(400).json({ success: false, message: 'Target station is not available' });
     }
 
-    // 3. Recalculate rate for target station
+    // Recalculate rate for target station
     const [rates] = await pool.query('SELECT * FROM pricing_rules WHERE station_type = ?', [targetStation.type]);
     if (rates.length === 0) {
       return res.status(500).json({ success: false, message: 'No pricing rule defined for target station type' });
@@ -376,7 +370,7 @@ router.post('/:id/transfer', verifyToken, async (req, res) => {
       );
     }
 
-    // 4. Update station statuses
+    // Update station statuses
     await pool.query('UPDATE stations SET status = "Available" WHERE id = ?', [session.station_id]);
     await pool.query('UPDATE stations SET status = "Occupied" WHERE id = ?', [targetStationId]);
 
@@ -404,7 +398,7 @@ router.post('/:id/stop', verifyToken, async (req, res) => {
   try {
     await conn.beginTransaction();
 
-    // 1. Get session info
+    // Session info
     const [sessions] = await conn.query(
       `SELECT s.*, st.name AS station_name 
        FROM game_sessions s 
@@ -419,7 +413,7 @@ router.post('/:id/stop', verifyToken, async (req, res) => {
 
     const session = sessions[0];
 
-    // 2. Mark session completed
+    // Complete session
     await conn.query(
       `UPDATE game_sessions 
        SET status = 'Completed', 
@@ -428,13 +422,13 @@ router.post('/:id/stop', verifyToken, async (req, res) => {
       [id]
     );
 
-    // 3. Mark pending POS items paid (if any)
+    // Mark pending POS paid
     await conn.query(
       'UPDATE pos_sales SET status = "Paid" WHERE session_id = ? AND status = "Pending"',
       [id]
     );
 
-    // 4. Set station status available
+    // Free station
     await conn.query('UPDATE stations SET status = "Available" WHERE id = ?', [session.station_id]);
 
     await conn.commit();

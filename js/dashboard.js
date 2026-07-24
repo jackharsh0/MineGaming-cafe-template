@@ -1114,9 +1114,7 @@ async function removeReceiptFoodItem(saleItemId, sessId) {
   }
 }
 
-// ==========================================
-// MERGE TO TABLE — Terminal → Dining Table
-// ==========================================
+// Merge terminal to dining table
 async function triggerMergeToTable(sessId, stationName) {
   document.getElementById('merge-to-table-session-id').value = sessId;
   document.getElementById('merge-to-table-title').innerText = `Merge ${stationName} → Dining Table`;

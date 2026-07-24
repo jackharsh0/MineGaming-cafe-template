@@ -445,7 +445,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </div>
       <?php endif; ?>
 
-      <!-- ── Login Form ── -->
+      <!-- Login Form -->
       <form id="form-login" method="POST" action="login.php" class="login-form">
         <input type="hidden" name="action" value="login">
 
@@ -485,7 +485,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         <?php endif; ?>
       </form>
 
-      <!-- ── Register Form ── -->
+      <!-- Register Form -->
       <form id="form-register" method="POST" action="login.php" class="login-form hidden">
         <input type="hidden" name="action" value="register">
 

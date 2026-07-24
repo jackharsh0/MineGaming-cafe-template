@@ -26,15 +26,15 @@ async function loadRevenueDetails() {
     const { revenue, graph, transactions } = res.data;
     allTransactions = transactions;
 
-    // 1. Populate aggregate totals
+    // Aggregate totals
     document.getElementById('revenue-daily').textContent = `₹${parseFloat(revenue.daily || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     document.getElementById('revenue-weekly').textContent = `₹${parseFloat(revenue.weekly || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     document.getElementById('revenue-monthly').textContent = `₹${parseFloat(revenue.monthly || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-    // 2. Render Graph
+    // Render graph
     renderTrendChart(graph);
 
-    // 3. Render Transaction List
+    // Render transaction list
     applyFilters();
 
   } catch (err) {
@@ -149,15 +149,15 @@ function applyFilters() {
   const selectedMethod = document.getElementById('filterMethod')?.value || 'All';
 
   const filtered = allTransactions.filter(tx => {
-    // 1. Search Query filter (Customer Name or Reference ID)
+    // Search filter
     const matchesSearch = searchQuery === '' || 
       tx.customer_name.toLowerCase().includes(searchQuery) ||
       tx.ref_id.toString().toLowerCase().includes(searchQuery);
 
-    // 2. Type filter
+    // Type filter
     const matchesType = selectedType === 'All' || tx.type === selectedType;
 
-    // 3. Method filter
+    // Method filter
     const matchesMethod = selectedMethod === 'All' || tx.payment_method === selectedMethod;
 
     return matchesSearch && matchesType && matchesMethod;

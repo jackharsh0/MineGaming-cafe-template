@@ -38,7 +38,7 @@ function populateAllTabs() {
   const s = settingsData;
   if (!s) return;
 
-  // ── Brand Tab ──
+  // Brand tab
   setVal('brand-business-name', s.brand?.business_name);
   setVal('brand-tagline', s.brand?.tagline);
   setVal('brand-address', s.brand?.address);
@@ -53,7 +53,7 @@ function populateAllTabs() {
     if (preview) { preview.src = BACKEND_URL + s.brand.logo_url; preview.classList.remove('hidden'); }
   }
 
-  // ── Website Tab ──
+  // Website tab
   setVal('web-hero-title', s.website?.hero_title);
   setVal('web-hero-subtitle', s.website?.hero_subtitle);
   setVal('web-about-text', s.website?.about_text);
@@ -76,14 +76,14 @@ function populateAllTabs() {
   }
   renderDefaultFoodItems(s.website?.default_food_items);
 
-  // ── Stations Tab ──
+  // Stations tab
   if (s.stations?.display_names) {
     Object.keys(s.stations.display_names).forEach(type => {
       setVal('display-name-' + type.toLowerCase(), s.stations.display_names[type]);
     });
   }
 
-  // ── System Tab ──
+  // System tab
   setVal('sys-page-title', s.system?.page_title);
   setVal('sys-meta-desc', s.system?.meta_description);
   setVal('sys-maintenance', s.system?.maintenance_mode);
@@ -110,7 +110,7 @@ function getVal(id) {
   return el.value;
 }
 
-// ── Default Food Items ──
+// Default food items
 function renderDefaultFoodItems(items) {
   const container = document.getElementById('food-items-list');
   if (!container) return;
@@ -145,7 +145,7 @@ function addDefaultFoodItem() {
   container.appendChild(row);
 }
 
-// ── Save Tab ──
+// Save tab
 async function saveTab(tabName) {
   const payload = {};
 
@@ -230,7 +230,7 @@ async function saveTab(tabName) {
   }
 }
 
-// ── Logo Upload ──
+// Logo upload
 function setupLogoUpload() {
   const input = document.getElementById('logo-upload');
   if (!input) return;

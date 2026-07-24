@@ -124,7 +124,6 @@ router.get('/checkout-preview/:sessionId', verifyToken, async (req, res) => {
   const { sessionId } = req.params;
 
   try {
-    // 1. Get session info
     const [sessions] = await pool.query(
       `SELECT s.*, st.name AS station_name, st.type AS station_type, p.id AS player_id, p.name AS player_name, p.phone AS player_phone, p.loyalty_tier, p.play_hours
        FROM game_sessions s
@@ -198,7 +197,7 @@ router.get('/checkout-preview/:sessionId', verifyToken, async (req, res) => {
       gameCost = parseFloat(session.total_cost);
     }
 
-    // 2. Fetch pending POS sales items
+    // Pending POS items
     const [posSales] = await pool.query(
       'SELECT id, total FROM pos_sales WHERE session_id = ? AND status = "Pending"',
       [sessionId]
@@ -271,7 +270,6 @@ router.post('/checkout/:sessionId', verifyToken, validateBody(billingCheckoutSch
   try {
     await conn.beginTransaction();
 
-    // 1. Get session info
     const [sessions] = await conn.query(
       `SELECT s.*, st.id AS station_id, st.name AS station_name, p.id AS player_id, p.name AS player_name, p.phone AS player_phone, p.loyalty_tier, p.play_hours
        FROM game_sessions s
@@ -411,7 +409,7 @@ router.post('/checkout/:sessionId', verifyToken, validateBody(billingCheckoutSch
       }
     }
 
-    // 2. Mark session completed
+    // Mark session completed
     await conn.query(
       `UPDATE game_sessions 
        SET status = 'Completed', 
@@ -426,7 +424,7 @@ router.post('/checkout/:sessionId', verifyToken, validateBody(billingCheckoutSch
       [total, discount, tax, paymentMethod, paymentIntentId || null, transactionId || null, sessionId]
     );
 
-    // 3. Mark pending POS items paid
+    // Mark pending POS paid
     if (posSales.length > 0) {
       await conn.query(
         'UPDATE pos_sales SET status = "Paid" WHERE session_id = ? AND status = "Pending"',
@@ -434,10 +432,10 @@ router.post('/checkout/:sessionId', verifyToken, validateBody(billingCheckoutSch
       );
     }
 
-    // 4. Set station status available
+    // Free station
     await conn.query('UPDATE stations SET status = "Available" WHERE id = ?', [session.station_id]);
 
-    // 5. Update Loyalty Engine
+    // Update loyalty
     if (session.player_id) {
       // Add points: 2 points per Rupee of game session cost
       const newPoints = Math.floor(gameCost * 2);
@@ -671,7 +669,7 @@ router.post('/merge-to-table', verifyToken, async (req, res) => {
   try {
     await conn.beginTransaction();
 
-    // 1. Get console session details
+    // Console session
     const [consoleSessions] = await conn.query(
       `SELECT s.*, st.name AS station_name 
        FROM game_sessions s 
@@ -684,7 +682,7 @@ router.post('/merge-to-table', verifyToken, async (req, res) => {
     }
     const consoleSession = consoleSessions[0];
 
-    // 2. Get dining session details
+    // Dining session
     const [diningSessions] = await conn.query(
       `SELECT id FROM game_sessions WHERE id = ? AND status IN ('Active', 'Paused') FOR UPDATE`,
       [diningSessionId]
@@ -719,7 +717,7 @@ router.post('/merge-to-table', verifyToken, async (req, res) => {
       }
     }
 
-    // 3. Create a special POS sale for the dining table for the console charge
+    // Create POS sale for dining table
     const taxPercent = parseFloat(await getSystemSetting('tax_percent', '10.00'));
     const total = parseFloat(consoleCost.toFixed(2));
     const subtotal = parseFloat((total / (1 + (taxPercent / 100))).toFixed(2));
@@ -759,13 +757,13 @@ router.post('/merge-to-table', verifyToken, async (req, res) => {
       [saleId, consoleQuantity, unitPrice, subtotal]
     );
 
-    // 4. Move all existing pending food orders from console session to dining session
+    // Move pending food orders to dining session
     await conn.query(
       'UPDATE pos_sales SET session_id = ? WHERE session_id = ? AND status = "Pending"',
       [diningSessionId, consoleSessionId]
     );
 
-    // 5. Complete the console session (timer stops, station is freed)
+    // Complete console session
     await conn.query(
       `UPDATE game_sessions 
        SET status = 'Completed', 
@@ -815,7 +813,7 @@ router.post('/merge-from-table', verifyToken, async (req, res) => {
   try {
     await conn.beginTransaction();
 
-    // 1. Get dining table session
+    // Dining session
     const [diningSessions] = await conn.query(
       `SELECT gs.*, st.name AS station_name, st.id AS station_id
        FROM game_sessions gs
@@ -828,7 +826,7 @@ router.post('/merge-from-table', verifyToken, async (req, res) => {
     }
     const diningSession = diningSessions[0];
 
-    // 2. Get terminal session — must be active and not Dining type
+    // Terminal session
     const [terminalSessions] = await conn.query(
       `SELECT gs.id, st.name AS station_name, st.type AS station_type
        FROM game_sessions gs
@@ -844,8 +842,7 @@ router.post('/merge-from-table', verifyToken, async (req, res) => {
       throw new Error('Target session must be a terminal (PC, PS5, Xbox, etc.) not a dining table');
     }
 
-    // 3. Calculate dining session time cost (usually 0 since Dining hourly rate = 0)
-    // but we still move all pending food POS orders from dining → terminal
+    // Calculate time cost, move pending food orders
     const now = pool.getDbNow();
     const startTime = new Date(diningSession.start_time);
     const activeEndTime = diningSession.status === 'Paused' ? new Date(diningSession.pause_time) : now;
@@ -872,7 +869,7 @@ router.post('/merge-from-table', verifyToken, async (req, res) => {
       }
     }
 
-    // 4. If dining table has time cost > 0, create a POS sale item on the terminal session
+    // Create POS sale on terminal if time cost > 0
     if (tableCost > 0) {
       const tableTotal = parseFloat(tableCost.toFixed(2));
       const tableSubtotal = parseFloat((tableTotal / (1 + (taxPercent / 100))).toFixed(2));
@@ -898,17 +895,17 @@ router.post('/merge-from-table', verifyToken, async (req, res) => {
       );
     }
 
-    // 5. Move all existing pending food orders from dining session to terminal session
+    // Transfer pending food orders
     await conn.query(
       'UPDATE pos_sales SET session_id = ? WHERE session_id = ? AND status = \'Pending\'',
       [terminalSessionId, diningSessionId]
     );
 
-    // 6. Track linked sessions for audit trail
+    // Link sessions for audit
     await conn.query('UPDATE game_sessions SET linked_session_id = ? WHERE id = ?', [terminalSessionId, diningSessionId]);
     await conn.query('UPDATE game_sessions SET linked_session_id = ? WHERE id = ?', [diningSessionId, terminalSessionId]).catch(() => {});
 
-    // 7. Complete the dining session — free the table
+    // Complete dining session
     await conn.query(
       `UPDATE game_sessions
        SET status = 'Completed',
@@ -921,7 +918,7 @@ router.post('/merge-from-table', verifyToken, async (req, res) => {
       [diningSessionId]
     );
 
-    // 8. Set dining table station available
+    // Free station
     await conn.query('UPDATE stations SET status = \'Available\' WHERE id = ?', [diningSession.station_id]);
 
     await conn.commit();

@@ -701,8 +701,6 @@ async function submitFoodOrderDash() {
   }
 }
 
-// Collapsible Quick Help Guide for operators new to computers
-
 </script>
 
 <?php

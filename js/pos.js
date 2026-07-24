@@ -35,14 +35,14 @@ async function loadInventory() {
   `;
 
   try {
-    // 1. Fetch categories
+    // Fetch categories
     const categoriesData = await apiFetch('/categories');
     if (categoriesData.success) {
       allCategories = categoriesData.categories;
       populateCategoryDropdown();
     }
 
-    // 2. Fetch inventory
+    // Fetch inventory
     const data = await apiFetch('/inventory');
     if (data.success) {
       allInventory = data.inventory;
