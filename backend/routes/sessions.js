@@ -4,6 +4,7 @@ const pool = require('../config/db');
 const { verifyToken } = require('../middleware/auth');
 const { logAudit, calculateHourlyRate, getSystemSetting } = require('../utils/helper');
 const { broadcast } = require('./realtime');
+const { handleError } = require('../utils/error');
 
 // Get all active sessions
 router.get('/active', verifyToken, async (req, res) => {
@@ -41,6 +42,9 @@ router.post('/start', verifyToken, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Station not found' });
     }
     const station = stations[0];
+    if (req.user.role === 'Attendant' && station.type !== 'Dining') {
+      return res.status(403).json({ success: false, message: 'Forbidden: Attendants are only authorized to start dining table sessions.' });
+    }
     if (station.status !== 'Available') {
       return res.status(400).json({ success: false, message: `Station is currently ${station.status.toLowerCase()}` });
     }
@@ -64,7 +68,7 @@ router.post('/start', verifyToken, async (req, res) => {
       return res.status(500).json({ success: false, message: 'No pricing rule defined for this station type' });
     }
     
-    const loyaltyTier = player ? player.loyalty_tier : 'Bronze';
+    const loyaltyTier = player ? player.loyalty_tier : null;
     const finalHourlyRate = await calculateHourlyRate(station.type, loyaltyTier, controllerCount || 1);
 
     let targetEndTime = null;
@@ -83,24 +87,25 @@ router.post('/start', verifyToken, async (req, res) => {
         return res.status(400).json({ success: false, message: 'Prepaid amount or duration is required' });
       }
 
-      // Handle debit from wallet if requested
-      if (paymentMethod === 'Wallet') {
+      // Handle debit from play hours if requested
+      if (paymentMethod === 'PlayHours') {
         if (!player) {
-          return res.status(400).json({ success: false, message: 'Registered player account is required to pay using wallet balance.' });
+          return res.status(400).json({ success: false, message: 'Registered player account is required to pay using play hours.' });
         }
-        if (parseFloat(player.wallet_balance) < totalCost) {
-          return res.status(400).json({ success: false, message: `Insufficient wallet balance. Available: ₹${player.wallet_balance}, Needed: ₹${totalCost}` });
+        const hoursToDeduct = calcDurationMinutes / 60;
+        if (parseFloat(player.play_hours) < hoursToDeduct) {
+          return res.status(400).json({ success: false, message: `Insufficient play hours balance. Available: ${player.play_hours} Hours, Needed: ${hoursToDeduct.toFixed(2)} Hours` });
         }
-        await conn.query('UPDATE players SET wallet_balance = wallet_balance - ? WHERE id = ?', [totalCost, player.id]);
+        await conn.query('UPDATE players SET play_hours = play_hours - ? WHERE id = ?', [hoursToDeduct, player.id]);
         
         // Insert POS sale record
         const taxPercent = parseFloat(await getSystemSetting('tax_percent', '10.00'));
         const sub = parseFloat((totalCost / (1 + (taxPercent / 100))).toFixed(2));
         const tx = parseFloat((totalCost - sub).toFixed(2));
         await conn.query(
-          `INSERT INTO pos_sales (player_id, sale_type, subtotal, tax, discount, total, payment_method, wallet_amount, cash_amount, status, created_by)
-           VALUES (?, 'Direct', ?, ?, 0.00, ?, 'Wallet', ?, 0.00, 'Paid', ?)`,
-          [player.id, sub, tx, totalCost, totalCost, req.user.id]
+          `INSERT INTO pos_sales (player_id, sale_type, subtotal, tax, discount, total, payment_method, play_hours_amount, cash_amount, status, created_by)
+           VALUES (?, 'Direct', ?, ?, 0.00, ?, 'PlayHours', ?, 0.00, 'Paid', ?)`,
+          [player.id, sub, tx, totalCost, hoursToDeduct, req.user.id]
         );
       } else if (paymentMethod === 'Cash' || paymentMethod === 'Card') {
         // Record direct POS sale
@@ -108,13 +113,13 @@ router.post('/start', verifyToken, async (req, res) => {
         const sub = parseFloat((totalCost / (1 + (taxPercent / 100))).toFixed(2));
         const tx = parseFloat((totalCost - sub).toFixed(2));
         await conn.query(
-          `INSERT INTO pos_sales (player_id, sale_type, subtotal, tax, discount, total, payment_method, wallet_amount, cash_amount, status, created_by)
+          `INSERT INTO pos_sales (player_id, sale_type, subtotal, tax, discount, total, payment_method, play_hours_amount, cash_amount, status, created_by)
            VALUES (?, 'Direct', ?, ?, 0.00, ?, ?, 0.00, ?, 'Paid', ?)`,
           [playerId || null, sub, tx, totalCost, paymentMethod, totalCost, req.user.id]
         );
       }
 
-      const now = new Date();
+      const now = pool.getDbNow();
       targetEndTime = new Date(now.getTime() + calcDurationMinutes * 60000);
     } else {
       // Postpaid optionally timed limit
@@ -127,7 +132,7 @@ router.post('/start', verifyToken, async (req, res) => {
       }
       
       if (calcDurationMinutes > 0) {
-        const now = new Date();
+        const now = pool.getDbNow();
         targetEndTime = new Date(now.getTime() + calcDurationMinutes * 60000);
       }
     }
@@ -162,8 +167,7 @@ router.post('/start', verifyToken, async (req, res) => {
     });
   } catch (err) {
     await conn.rollback();
-    console.error(err);
-    res.status(500).json({ success: false, message: err.message || 'Server error' });
+    handleError(res, err, 'Server error');
   } finally {
     conn.release();
   }
@@ -200,7 +204,10 @@ router.post('/:id/resume', verifyToken, async (req, res) => {
   const { id } = req.params;
   try {
     const [rows] = await pool.query(
-      'SELECT s.*, st.name AS station_name FROM game_sessions s JOIN stations st ON s.station_id = st.id WHERE s.id = ? AND s.status = "Paused"',
+      `SELECT s.*, st.name AS station_name, TIMESTAMPDIFF(SECOND, s.pause_time, CURRENT_TIMESTAMP) AS pause_duration_secs 
+       FROM game_sessions s 
+       JOIN stations st ON s.station_id = st.id 
+       WHERE s.id = ? AND s.status = "Paused"`,
       [id]
     );
     if (rows.length === 0) {
@@ -208,24 +215,19 @@ router.post('/:id/resume', verifyToken, async (req, res) => {
     }
 
     const session = rows[0];
-    const now = new Date();
-    const pauseTime = new Date(session.pause_time);
-    const pauseDurationSeconds = Math.floor((now - pauseTime) / 1000);
-
-    let targetEndTime = session.target_end_time;
-    if (session.session_type === 'Prepaid' && session.target_end_time) {
-      const prevTarget = new Date(session.target_end_time);
-      targetEndTime = new Date(prevTarget.getTime() + pauseDurationSeconds * 1000);
-    }
+    const pauseDurationSeconds = session.pause_duration_secs || 0;
 
     await pool.query(
       `UPDATE game_sessions 
        SET status = "Active", 
            paused_duration_seconds = paused_duration_seconds + ?, 
            pause_time = NULL,
-           target_end_time = ? 
+           target_end_time = CASE 
+             WHEN session_type = 'Prepaid' AND target_end_time IS NOT NULL THEN DATE_ADD(target_end_time, INTERVAL ? SECOND)
+             ELSE target_end_time
+           END
        WHERE id = ?`,
-      [pauseDurationSeconds, targetEndTime, id]
+      [pauseDurationSeconds, pauseDurationSeconds, id]
     );
 
     await logAudit(req.user.id, 'Session Resume', `Resumed session ID: ${id} on ${session.station_name}`);
@@ -270,21 +272,22 @@ router.post('/:id/extend', verifyToken, async (req, res) => {
       return res.status(400).json({ success: false, message: 'Valid extension time or amount is required' });
     }
 
-    const currentTarget = new Date(session.target_end_time);
-    const newTarget = new Date(currentTarget.getTime() + extraMinutes * 60000);
-
     await pool.query(
       `UPDATE game_sessions 
-       SET target_end_time = ?, 
+       SET target_end_time = DATE_ADD(target_end_time, INTERVAL ? MINUTE), 
            total_cost = total_cost + ? 
        WHERE id = ?`,
-      [newTarget, extraCost, id]
+      [extraMinutes, extraCost, id]
     );
+
+    // Fetch the updated target_end_time
+    const [updated] = await pool.query('SELECT target_end_time FROM game_sessions WHERE id = ?', [id]);
+    const newTarget = updated.length > 0 ? updated[0].target_end_time : null;
 
     await logAudit(
       req.user.id,
       'Session Extend',
-      `Extended session ID: ${id} on ${session.station_name} by ${extraMinutes} mins ($${extraCost})`
+      `Extended session ID: ${id} on ${session.station_name} by ${extraMinutes} mins (₹${extraCost})`
     );
 
     res.json({ success: true, message: 'Session extended successfully', newTarget, extraCost });
@@ -330,10 +333,10 @@ router.post('/:id/transfer', verifyToken, async (req, res) => {
       return res.status(500).json({ success: false, message: 'No pricing rule defined for target station type' });
     }
     
-    const loyaltyTier = session.loyalty_tier || 'Bronze';
+    const loyaltyTier = session.loyalty_tier || null;
     const newHourlyRate = await calculateHourlyRate(targetStation.type, loyaltyTier, session.controller_count);
 
-    const now = new Date();
+    const now = pool.getDbNow();
 
     if (session.session_type === 'Prepaid') {
       // Prepaid transfer logic: convert remaining time cash value to target station rate
@@ -449,10 +452,31 @@ router.post('/:id/stop', verifyToken, async (req, res) => {
 
   } catch (err) {
     await conn.rollback();
-    console.error(err);
-    res.status(400).json({ success: false, message: err.message || 'Server error stopping session' });
+    handleError(res, err, 'Server error stopping session');
   } finally {
     conn.release();
+  }
+});
+
+// Get active session for a specific station
+router.get('/station/:stationId', verifyToken, async (req, res) => {
+  const { stationId } = req.params;
+  try {
+    const [rows] = await pool.query(
+      `SELECT s.*, st.name AS station_name 
+       FROM game_sessions s 
+       JOIN stations st ON s.station_id = st.id 
+       WHERE s.station_id = ? AND s.status IN ('Active', 'Paused')
+       LIMIT 1`,
+      [stationId]
+    );
+    if (rows.length === 0) {
+      return res.json({ success: false, message: 'No active session for this station' });
+    }
+    res.json({ success: true, session: rows[0] });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ success: false, message: 'Server error' });
   }
 });
 

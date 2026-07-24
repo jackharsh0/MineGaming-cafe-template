@@ -47,20 +47,20 @@ async function loadActiveSessions() {
 
         tr.innerHTML = `
           <td class="font-mono text-xs text-slate-500">#${sess.id}</td>
-          <td class="font-bold text-white font-cyber">${sess.station_name}</td>
+          <td class="font-bold text-slate-100 font-cyber">${sess.station_name}</td>
           <td><span class="station-type-badge">${sess.station_type}</span></td>
           <td>${sess.player_name || '<span class="text-slate-500 italic">Guest Walk-in</span>'}</td>
           <td><span class="badge badge-gold">${sess.loyalty_tier || 'Bronze'}</span></td>
           <td class="font-mono text-xs">${start}</td>
           <td>${typeBadge}</td>
-          <td class="font-bold text-neonCyan" id="row-cost-${sess.id}">₹${parseFloat(sess.total_cost).toFixed(2)}</td>
-          <td class="font-mono text-base text-neonCyan" id="row-timer-${sess.id}">00:00:00</td>
+          <td class="font-bold text-wood" id="row-cost-${sess.id}">₹${parseFloat(sess.total_cost).toFixed(2)}</td>
+          <td class="font-mono text-base text-wood" id="row-timer-${sess.id}">00:00:00</td>
           <td>
             <div class="flex gap-2">
               ${playPauseBtn}
               ${extendBtn}
               <a href="pos.php?session_id=${sess.id}" class="btn btn-success btn-sm flex items-center justify-center font-cyber text-xs" title="Add Food"><i class="fa-solid fa-cookie-bite"></i></a>
-              <button onclick="triggerTransfer(${sess.id}, '${sess.station_name}')" class="btn btn-secondary btn-sm" title="Transfer"><i class="fa-solid fa-arrows-left-right text-neonCyan"></i></button>
+              <button onclick="triggerTransfer(${sess.id}, '${sess.station_name}')" class="btn btn-secondary btn-sm" title="Transfer"><i class="fa-solid fa-arrows-left-right text-wood"></i></button>
               ${stopOrCheckoutBtn}
             </div>
           </td>
@@ -77,7 +77,7 @@ async function loadActiveSessions() {
   } catch (err) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="10" class="text-center py-6 text-neonRed font-bold">Failed to load active sessions: ${err.message}</td>
+        <td colspan="10" class="text-center py-6 text-rust font-bold">Failed to load active sessions: ${err.message}</td>
       </tr>
     `;
   }
@@ -94,15 +94,15 @@ window.addEventListener('sessionTimerTick', (e) => {
 
     if (timerCell) {
       if (tick.status === 'Paused') {
-        timerCell.innerHTML = `<span class="text-neonGold font-bold">PAUSED</span>`;
+        timerCell.innerHTML = `<span class="text-brass font-bold">PAUSED</span>`;
       } else {
         const timeVal = tick.session_type === 'Prepaid' ? tick.seconds_left : tick.seconds_elapsed;
         timerCell.innerText = formatTimeSeconds(timeVal);
 
         if (tick.session_type === 'Prepaid' && timeVal <= 300) {
-          timerCell.className = 'font-mono text-base text-neonRed animate-pulse';
+          timerCell.className = 'font-mono text-base text-rust vintage-breathe';
         } else {
-          timerCell.className = tick.session_type === 'Postpaid' ? 'font-mono text-base text-neonPink' : 'font-mono text-base text-neonCyan';
+          timerCell.className = tick.session_type === 'Postpaid' ? 'font-mono text-base text-clay' : 'font-mono text-base text-wood';
         }
       }
     }
@@ -113,7 +113,7 @@ window.addEventListener('sessionTimerTick', (e) => {
   });
 });
 
-// SSE redirect for terminal updates
+// SSE redirect for station updates
 window.addEventListener('stationStatusChanged', (e) => {
   loadActiveSessions();
 });
@@ -252,25 +252,79 @@ async function triggerCheckout(sessId) {
       document.getElementById('rcpt-game-rate').innerText = `₹${parseFloat(billing.game_cost / (info.elapsed_minutes/60 || 1)).toFixed(2)}`;
       document.getElementById('rcpt-game-cost').innerText = `₹${billing.game_cost.toFixed(2)}`;
 
-      // Cafe items list
+      // Cafe and Terminal items
       const cafeContainer = document.getElementById('rcpt-cafe-items-container');
+      const terminalContainer = document.getElementById('rcpt-terminal-items-container');
       cafeContainer.innerHTML = '';
+      if (terminalContainer) { terminalContainer.innerHTML = ''; terminalContainer.style.display = 'none'; }
       
       const posItems = await apiFetch(`/pos/session/${sessId}`);
       if (posItems.success && posItems.items.length > 0) {
+        let hasTerminalItems = false;
+        let hasCafeItems = false;
+        
         posItems.items.forEach(item => {
-          const row = document.createElement('div');
-          row.className = 'grid grid-cols-12 gap-1 text-[11px] text-slate-400';
           const rate = parseFloat(item.unit_price).toFixed(2);
           const total = parseFloat(item.total_price).toFixed(2);
-          row.innerHTML = `
-            <span class="col-span-6">+ ${item.item_name}</span>
-            <span class="col-span-2 text-center">${item.quantity}</span>
-            <span class="col-span-2 text-right">₹${rate}</span>
-            <span class="col-span-2 text-right text-slate-300">₹${total}</span>
-          `;
-          cafeContainer.appendChild(row);
+          
+          if (parseInt(item.item_id) === 999) {
+            hasTerminalItems = true;
+            
+            let timeDetails = '';
+            if (item.terminal_station_name) {
+              timeDetails += `<div class="text-[10px] text-slate-500"><span class="text-slate-400">Station:</span> ${item.terminal_station_name}</div>`;
+            }
+            if (item.terminal_start_time) {
+              const startTime = new Date(item.terminal_start_time);
+              const fmtTime = (d) => d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+              timeDetails += `<div class="text-[10px] text-slate-500"><span class="text-slate-400">Time:</span> ${fmtTime(startTime)} - ${item.terminal_end_time ? fmtTime(new Date(item.terminal_end_time)) : 'Now'}</div>`;
+              if (item.terminal_target_end_time) {
+                timeDetails += `<div class="text-[10px] text-slate-500"><span class="text-slate-400">Target:</span> ${fmtTime(new Date(item.terminal_target_end_time))} (estimated)</div>`;
+              }
+              const startMs = new Date(item.terminal_start_time).getTime();
+              const endMs = item.terminal_end_time ? new Date(item.terminal_end_time).getTime() : Date.now();
+              const elapsedMin = Math.round((endMs - startMs) / 60000);
+              timeDetails += `<div class="text-[10px] text-slate-500"><span class="text-slate-400">Elapsed:</span> ${elapsedMin} min (real-time)</div>`;
+            }
+            if (item.terminal_hourly_rate && parseFloat(item.terminal_hourly_rate) > 0) {
+              timeDetails += `<div class="text-[10px] text-slate-500"><span class="text-slate-400">Rate:</span> ₹${parseFloat(item.terminal_hourly_rate).toFixed(2)}/hr</div>`;
+            }
+            if (item.terminal_payment_method) {
+              timeDetails += `<div class="text-[10px] text-slate-500"><span class="text-slate-400">Paid via:</span> ${item.terminal_payment_method}</div>`;
+            }
+            
+            const detailsBlock = timeDetails ? `<div class="mt-1 space-y-0.5 col-span-12">${timeDetails}</div>` : '';
+            
+            const row = document.createElement('div');
+            row.className = 'grid grid-cols-12 gap-1 text-[11px] text-slate-400 items-center border-t border-dashed border-slate-800 pt-2 mt-1';
+            row.innerHTML = `
+              <span class="col-span-6 flex items-start"><span class="truncate text-wood font-bold">Terminal: ${item.item_name}</span></span>
+              <span class="col-span-2 text-center">${parseFloat(item.quantity).toFixed(2)} hr</span>
+              <span class="col-span-2 text-right">₹${rate}</span>
+              <span class="col-span-2 text-right text-slate-300">₹${total}</span>
+              ${detailsBlock}
+            `;
+            if (terminalContainer) terminalContainer.appendChild(row);
+          } else {
+            hasCafeItems = true;
+            const row = document.createElement('div');
+            row.className = 'grid grid-cols-12 gap-1 text-[11px] text-slate-400';
+            row.innerHTML = `
+              <span class="col-span-6">+ ${item.item_name}</span>
+              <span class="col-span-2 text-center">${item.quantity}</span>
+              <span class="col-span-2 text-right">₹${rate}</span>
+              <span class="col-span-2 text-right text-slate-300">₹${total}</span>
+            `;
+            cafeContainer.appendChild(row);
+          }
         });
+        
+        if (hasTerminalItems && terminalContainer) {
+          terminalContainer.style.display = 'block';
+        }
+        if (!hasCafeItems) {
+          cafeContainer.innerHTML = '<div class="text-[10px] text-slate-500 italic py-1">No cafe purchases linked</div>';
+        }
       } else {
         cafeContainer.innerHTML = '<div class="text-[10px] text-slate-500 italic py-1">No cafe purchases linked</div>';
       }
@@ -283,8 +337,8 @@ async function triggerCheckout(sessId) {
 
       updateInvoiceDom(billing.subtotal, 0.00, billing.tax, billing.total);
 
-      document.getElementById('checkout-available-wallet').innerText = parseFloat(info.wallet_balance || 0).toFixed(2);
-      document.getElementById('checkout-split-wallet').value = '0.00';
+      document.getElementById('checkout-available-play-hours').innerText = parseFloat(info.play_hours || 0).toFixed(2);
+      document.getElementById('checkout-split-play-hours').value = '0.00';
       document.getElementById('checkout-split-cash').value = '0.00';
 
       openModal('modal-checkout-session');
@@ -363,7 +417,7 @@ document.getElementById('form-checkout-session').addEventListener('submit', asyn
   const sessId = document.getElementById('checkout-session-id').value;
   const paymentMethod = document.getElementById('checkout-payment-method').value;
   const couponCode = document.getElementById('checkout-coupon-code').value || null;
-  const walletSplitAmount = parseFloat(document.getElementById('checkout-split-wallet').value) || 0.00;
+  const playHoursSplitAmount = parseFloat(document.getElementById('checkout-split-play-hours').value) || 0.00;
   const cashSplitAmount = parseFloat(document.getElementById('checkout-split-cash').value) || 0.00;
 
   try {
@@ -372,7 +426,7 @@ document.getElementById('form-checkout-session').addEventListener('submit', asyn
       body: JSON.stringify({
         paymentMethod,
         couponCode,
-        walletSplitAmount,
+        playHoursSplitAmount,
         cashSplitAmount
       })
     });

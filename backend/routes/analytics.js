@@ -250,7 +250,7 @@ router.get('/revenue-details', verifyToken, requireRole(['SuperAdmin', 'Manager'
 
   } catch (err) {
     console.error(err);
-    res.status(500).json({ success: false, message: 'Server error: ' + err.message });
+    res.status(500).json({ success: false, message: 'Server error' });
   }
 });
 
@@ -405,7 +405,7 @@ router.get('/receipt/:type/:refId', verifyToken, requireRole(['SuperAdmin', 'Man
 
   } catch (err) {
     console.error(err);
-    res.status(500).json({ success: false, message: 'Server error: ' + err.message });
+    res.status(500).json({ success: false, message: 'Server error' });
   }
 });
 

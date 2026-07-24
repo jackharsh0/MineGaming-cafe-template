@@ -5,15 +5,30 @@ const jwt = require('jsonwebtoken');
 const pool = require('../config/db');
 const { verifyToken, requireRole } = require('../middleware/auth');
 const { logAudit } = require('../utils/helper');
+const { validateBody, z } = require('../middleware/validate');
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '../../.env') });
 
+const loginSchema = z.object({
+  username: z.string().trim().min(1, 'Username is required'),
+  password: z.string().min(1, 'Password is required')
+});
+
+const customerLoginSchema = z.object({
+  phone: z.string().trim().min(1, 'Phone is required'),
+  password: z.string().min(1, 'Password is required')
+});
+
+const customerRegisterSchema = z.object({
+  name: z.string().trim().min(1, 'Name is required'),
+  phone: z.string().trim().regex(/^\+?[0-9\s()-]{10,20}$/, 'Please provide a valid phone number (at least 10 digits)'),
+  email: z.string().email('Please enter a valid email address').optional().nullable().or(z.literal('')),
+  password: z.string().min(4, 'Password must be at least 4 characters long')
+});
+
 // Login
-router.post('/login', async (req, res) => {
+router.post('/login', validateBody(loginSchema), async (req, res) => {
   const { username, password } = req.body;
-  if (!username || !password) {
-    return res.status(400).json({ success: false, message: 'Username and Password required' });
-  }
 
   try {
     const [rows] = await pool.query('SELECT * FROM users_admin WHERE username = ? AND status = "Active"', [username]);
@@ -28,9 +43,14 @@ router.post('/login', async (req, res) => {
     }
 
     // Generate JWT
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret) {
+      console.error('FATAL: JWT_SECRET environment variable is not set');
+      return res.status(500).json({ success: false, message: 'Server configuration error' });
+    }
     const token = jwt.sign(
       { id: admin.id, username: admin.username, role: admin.role, full_name: admin.full_name },
-      process.env.JWT_SECRET || 'super_secret_cyber_neon_key_2026',
+      jwtSecret,
       { expiresIn: '12h' }
     );
 
@@ -58,24 +78,33 @@ router.get('/me', verifyToken, (req, res) => {
 });
 
 // Customer Register
-router.post('/customer/register', async (req, res) => {
+router.post('/customer/register', validateBody(customerRegisterSchema), async (req, res) => {
   const { name, phone, email, password } = req.body;
-  if (!name || !phone || !password) {
-    return res.status(400).json({ success: false, message: 'Name, Phone, and Password are required' });
-  }
+  const cleanPhone = phone.replace(/[\s()-]/g, '');
 
   try {
     // Check if phone number is already registered
-    const [existing] = await pool.query('SELECT id FROM players WHERE phone = ?', [phone]);
+    const [existing] = await pool.query('SELECT id, password_hash FROM players WHERE phone = ?', [phone]);
     if (existing.length > 0) {
-      return res.status(400).json({ success: false, message: 'A player with this phone number already exists' });
+      const existingPlayer = existing[0];
+      if (existingPlayer.password_hash) {
+        return res.status(400).json({ success: false, message: 'A player with this phone number already exists' });
+      }
+      // It's a guest placeholder! Complete registration.
+      const salt = await bcrypt.genSalt(10);
+      const hash = await bcrypt.hash(password, salt);
+      await pool.query(
+        'UPDATE players SET name = ?, email = ?, password_hash = ? WHERE id = ?',
+        [name, email || null, hash, existingPlayer.id]
+      );
+      return res.json({ success: true, message: 'Registration completed successfully! Your guest points and history are linked.' });
     }
 
     const salt = await bcrypt.genSalt(10);
     const hash = await bcrypt.hash(password, salt);
 
     const [result] = await pool.query(
-      `INSERT INTO players (name, phone, email, password_hash, wallet_balance, loyalty_points, loyalty_tier) 
+      `INSERT INTO players (name, phone, email, password_hash, play_hours, loyalty_points, loyalty_tier) 
        VALUES (?, ?, ?, ?, 0.00, 0, 'Bronze')`,
       [name, phone, email || null, hash]
     );
@@ -88,11 +117,8 @@ router.post('/customer/register', async (req, res) => {
 });
 
 // Customer Login
-router.post('/customer/login', async (req, res) => {
+router.post('/customer/login', validateBody(customerLoginSchema), async (req, res) => {
   const { phone, password } = req.body;
-  if (!phone || !password) {
-    return res.status(400).json({ success: false, message: 'Phone and Password are required' });
-  }
 
   try {
     const [rows] = await pool.query('SELECT * FROM players WHERE phone = ? AND is_blacklisted = 0', [phone]);
@@ -113,9 +139,14 @@ router.post('/customer/login', async (req, res) => {
     }
 
     // Generate JWT for customer
+    const jwtSecret = process.env.JWT_SECRET;
+    if (!jwtSecret) {
+      console.error('FATAL: JWT_SECRET environment variable is not set');
+      return res.status(500).json({ success: false, message: 'Server configuration error' });
+    }
     const token = jwt.sign(
       { id: player.id, name: player.name, phone: player.phone, role: 'Customer' },
-      process.env.JWT_SECRET || 'super_secret_cyber_neon_key_2026',
+      jwtSecret,
       { expiresIn: '12h' }
     );
 

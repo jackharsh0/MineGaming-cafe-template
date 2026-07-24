@@ -164,7 +164,7 @@ router.delete('/:id', verifyToken, requireRole(['SuperAdmin']), async (req, res)
     res.json({ success: true, message: `Account '${username}' has been completely deleted.` });
   } catch (err) {
     console.error(err);
-    res.status(500).json({ success: false, message: 'Server error: ' + err.message });
+    res.status(500).json({ success: false, message: 'Server error' });
   }
 });
 

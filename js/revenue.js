@@ -19,7 +19,7 @@ async function loadRevenueDetails() {
   try {
     const res = await apiFetch('/analytics/revenue-details');
     if (!res.success) {
-      tbody.innerHTML = `<tr><td colspan="6" class="text-center py-6 text-neonRed font-bold">Failed to load analytics data!</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="6" class="text-center py-6 text-rust font-bold">Failed to load analytics data!</td></tr>`;
       return;
     }
 
@@ -39,7 +39,7 @@ async function loadRevenueDetails() {
 
   } catch (err) {
     console.error(err);
-    tbody.innerHTML = `<tr><td colspan="6" class="text-center py-6 text-neonRed font-bold">Error connecting to server.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="6" class="text-center py-6 text-rust font-bold">Error connecting to server.</td></tr>`;
   }
 }
 
@@ -196,8 +196,8 @@ function applyFilters() {
     // Format payment method badge
     let methodBadge = '';
     const m = tx.payment_method || 'Cash';
-    if (m === 'Wallet') {
-      methodBadge = `<span class="badge badge-cyan"><i class="fa-solid fa-wallet mr-1 text-[9px]"></i>Wallet</span>`;
+    if (m === 'PlayHours') {
+      methodBadge = `<span class="badge badge-cyan"><i class="fa-solid fa-clock mr-1 text-[9px]"></i>Play Hours</span>`;
     } else if (m === 'Card') {
       methodBadge = `<span class="badge" style="background: rgba(14, 165, 233, 0.1); color: #38bdf8; border: 1px solid rgba(14, 165, 233, 0.3)"><i class="fa-solid fa-credit-card mr-1 text-[9px]"></i>Card</span>`;
     } else if (m === 'Split') {
@@ -214,7 +214,7 @@ function applyFilters() {
       <td>${typeBadge}</td>
       <td class="font-mono text-xs text-slate-300">#${tx.ref_id}</td>
       <td class="font-bold text-slate-100">${tx.customer_name}</td>
-      <td class="font-mono font-bold text-neonGreen">₹${parseFloat(tx.amount || 0).toFixed(2)}</td>
+      <td class="font-mono font-bold text-forest">₹${parseFloat(tx.amount || 0).toFixed(2)}</td>
       <td>${methodBadge}</td>
     `;
     tbody.appendChild(tr);
@@ -227,7 +227,7 @@ async function viewReceipt(type, refId) {
 
   modalContent.innerHTML = `
     <div class="text-center py-12 text-slate-500">
-      <i class="fa-solid fa-spinner fa-spin fa-2x mb-3 text-neonCyan"></i>
+      <i class="fa-solid fa-spinner fa-spin fa-2x mb-3 text-wood"></i>
       <p class="text-xs">RETRIEVING TRANSACTION DATA...</p>
     </div>
   `;
@@ -237,7 +237,7 @@ async function viewReceipt(type, refId) {
     const res = await apiFetch(`/analytics/receipt/${encodeURIComponent(type)}/${refId}`);
     if (!res.success) {
       modalContent.innerHTML = `
-        <div class="text-center py-12 text-neonRed font-bold">
+        <div class="text-center py-12 text-rust font-bold">
           <i class="fa-solid fa-circle-xmark fa-2x mb-3"></i>
           <p class="text-xs">FAILED TO RETRIEVE RECEIPT</p>
         </div>
@@ -295,8 +295,8 @@ async function viewReceipt(type, refId) {
     // Payment method layout
     let pMethodBadge = '';
     const pm = receipt.payment_method || 'Cash';
-    if (pm === 'Wallet') {
-      pMethodBadge = '<span class="badge badge-cyan">Wallet</span>';
+    if (pm === 'PlayHours') {
+      pMethodBadge = '<span class="badge badge-cyan">Play Hours</span>';
     } else if (pm === 'Card') {
       pMethodBadge = '<span class="badge" style="background: rgba(14, 165, 233, 0.1); color: #38bdf8; border: 1px solid rgba(14, 165, 233, 0.3)">Card</span>';
     } else if (pm === 'Split') {
@@ -307,7 +307,7 @@ async function viewReceipt(type, refId) {
 
     modalContent.innerHTML = `
       <div class="text-center border-b border-dashed border-slate-700 pb-3">
-        <h4 class="text-white text-base font-bold tracking-widest font-cyber">THE GAMING GARAGE</h4>
+        <h4 class="text-slate-100 text-base font-bold tracking-widest font-cyber">SOLEILA</h4>
         <p class="text-[10px] text-slate-400">JODHPUR'S PREMIER GAMING LOUNGE</p>
         <p class="text-[9px] text-slate-500 font-mono mt-1">Ref Transaction ID: #${receipt.ref_id}</p>
       </div>
@@ -327,7 +327,7 @@ async function viewReceipt(type, refId) {
         <span class="text-right text-slate-200 font-mono">${receipt.customer_phone}</span>
 
         <span class="text-slate-400">Membership Tier:</span>
-        <span class="text-right text-neonCyan font-cyber font-bold tracking-wider">${receipt.customer_tier}</span>
+        <span class="text-right text-wood font-cyber font-bold tracking-wider">${receipt.customer_tier}</span>
 
         <span class="text-slate-400">Processed By:</span>
         <span class="text-right text-slate-200">${receipt.staff_name}</span>
@@ -336,7 +336,7 @@ async function viewReceipt(type, refId) {
       <!-- Session Specific stats if applicable -->
       ${receipt.type === 'Game Session' ? `
       <div class="border-b border-dashed border-slate-700 pb-3 text-[11px] space-y-1.5">
-        <div class="flex justify-between font-bold text-neonCyan font-cyber">
+        <div class="flex justify-between font-bold text-wood font-cyber">
           <span>STATION ASSIGNMENT</span>
           <span>${receipt.station_name} [${receipt.station_type}]</span>
         </div>
@@ -357,7 +357,7 @@ async function viewReceipt(type, refId) {
 
       <!-- Items detail list -->
       <div class="border-b border-dashed border-slate-700 pb-3">
-        <div class="font-bold text-[11px] text-neonPink uppercase tracking-wider mb-2 font-cyber">Receipt Items</div>
+        <div class="font-bold text-[11px] text-clay uppercase tracking-wider mb-2 font-cyber">Receipt Items</div>
         <div class="space-y-2">
           ${itemsHTML}
         </div>
@@ -371,16 +371,16 @@ async function viewReceipt(type, refId) {
         </div>
         <div class="flex justify-between">
           <span class="text-slate-400">Discount Applied:</span>
-          <span class="font-mono text-neonRed">-₹${receipt.discount.toFixed(2)}</span>
+          <span class="font-mono text-rust">-₹${receipt.discount.toFixed(2)}</span>
         </div>
         <div class="flex justify-between">
           <span class="text-slate-400">G.S.T (10%):</span>
           <span class="font-mono text-slate-200">₹${receipt.tax.toFixed(2)}</span>
         </div>
         
-        <div class="flex justify-between text-xs font-bold border-t border-dashed border-slate-700 pt-3 text-white">
+        <div class="flex justify-between text-xs font-bold border-t border-dashed border-slate-700 pt-3 text-slate-100">
           <span>GRAND TOTAL:</span>
-          <span class="font-mono text-neonGreen text-sm">₹${receipt.total.toFixed(2)}</span>
+          <span class="font-mono text-forest text-sm">₹${receipt.total.toFixed(2)}</span>
         </div>
         
         <div class="flex justify-between items-center pt-2">
@@ -396,7 +396,7 @@ async function viewReceipt(type, refId) {
   } catch (err) {
     console.error(err);
     modalContent.innerHTML = `
-      <div class="text-center py-12 text-neonRed font-bold">
+      <div class="text-center py-12 text-rust font-bold">
         <i class="fa-solid fa-circle-exclamation fa-2x mb-3"></i>
         <p class="text-xs">ERROR CONNECTING TO SERVER: ${err.message}</p>
       </div>

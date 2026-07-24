@@ -2,9 +2,9 @@
 include 'header.php';
 ?>
 
-<div class="bg-cyberPanel border border-slate-800 rounded-lg p-6">
+<div class="bg-parchment border border-slate-800 rounded-lg p-6">
   <div class="section-header flex justify-between items-center mb-6">
-    <h2 class="text-xl font-bold text-neonCyan flex items-center gap-2">
+    <h2 class="text-xl font-bold text-wood flex items-center gap-2">
       <i class="fa-solid fa-user-gear"></i>
       <span>Staff Account Management</span>
     </h2>
@@ -42,7 +42,7 @@ include 'header.php';
      ========================================== -->
 
 <!-- Add/Edit User Modal -->
-<div id="modal-user-crud" class="modal-overlay">
+<div id="modal-user-crud" class="modal-overlay" role="dialog" aria-modal="true">
   <div class="modal-container">
     <div class="modal-header">
       <h3 class="modal-title" id="user-modal-title">Create New Account</h3>

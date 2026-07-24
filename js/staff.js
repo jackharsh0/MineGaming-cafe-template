@@ -10,7 +10,7 @@ async function loadAuditLogs() {
   if (window.CURRENT_USER_ROLE === 'Attendant') {
     tbody.innerHTML = `
       <tr>
-        <td colspan="4" class="text-center py-6 text-neonRed font-bold">
+        <td colspan="4" class="text-center py-6 text-rust font-bold">
           <i class="fa-solid fa-lock mr-2"></i> Access Restricted
           <p class="text-xs text-slate-500 font-normal mt-1">Audit logs can only be viewed by Managers or Super Administrators.</p>
         </td>
@@ -56,10 +56,10 @@ async function loadAuditLogs() {
         tr.innerHTML = `
           <td class="font-mono text-[10px] text-slate-400">${stamp}</td>
           <td>
-            <div class="font-bold text-white text-xs">${log.full_name}</div>
+            <div class="font-bold text-slate-100 text-xs">${log.full_name}</div>
             <div class="flex items-center gap-1 mt-0.5"><span class="text-[10px] text-slate-500">@${log.username}</span> ${roleBadge}</div>
           </td>
-          <td class="font-bold text-neonPink text-xs uppercase tracking-wider font-cyber">${log.action}</td>
+          <td class="font-bold text-clay text-xs uppercase tracking-wider font-cyber">${log.action}</td>
           <td class="text-xs text-slate-300 max-w-sm truncate" title="${log.details}">${log.details}</td>
         `;
         tbody.appendChild(tr);
@@ -68,7 +68,7 @@ async function loadAuditLogs() {
   } catch (err) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="4" class="text-center py-6 text-neonRed font-bold">Failed to load audits: ${err.message}</td>
+        <td colspan="4" class="text-center py-6 text-rust font-bold">Failed to load audits: ${err.message}</td>
       </tr>
     `;
   }
@@ -94,8 +94,31 @@ async function runDatabaseBackup() {
     if (data.success) {
       showToast('Database SQL dump compiled successfully!', 'success');
       
-      // Setup download link
-      downloadLink.href = `${window.BACKEND_URL}/system/backup/download/${data.filename}?token=${window.JWT_TOKEN}`;
+      // Setup download handler using fetch to avoid token leakage in query parameters
+      downloadLink.href = '#';
+      downloadLink.onclick = async (e) => {
+        e.preventDefault();
+        try {
+          showToast('Downloading backup file...', 'info');
+          const response = await fetch(`${window.BACKEND_URL}/system/backup/download/${data.filename}`, {
+            headers: {
+              'Authorization': `Bearer ${window.JWT_TOKEN}`
+            }
+          });
+          if (!response.ok) throw new Error('Download failed');
+          const blob = await response.blob();
+          const downloadUrl = window.URL.createObjectURL(blob);
+          const tempLink = document.createElement('a');
+          tempLink.href = downloadUrl;
+          tempLink.download = data.filename;
+          document.body.appendChild(tempLink);
+          tempLink.click();
+          document.body.removeChild(tempLink);
+          window.URL.revokeObjectURL(downloadUrl);
+        } catch (downloadErr) {
+          showToast('Failed to download backup: ' + downloadErr.message, 'error');
+        }
+      };
       downloadContainer.classList.remove('hidden');
     }
   } catch (err) {

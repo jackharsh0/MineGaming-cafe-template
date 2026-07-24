@@ -22,8 +22,11 @@ async function loadPricingRates() {
         const div = document.createElement('div');
         div.className = 'p-4 bg-slate-900/30 border border-slate-800 rounded space-y-4';
 
-        let addonLabel = rate.station_type === 'PS5' || rate.station_type === 'Xbox' ? 'Controller Add-on Rate (₹/hr)' : 'Gamepad Add-on (N/A)';
-        let disableAddon = rate.station_type !== 'PS5' && rate.station_type !== 'Xbox' ? 'disabled' : '';
+        let addonLabel = ['PS5', 'Xbox', 'PS4'].includes(rate.station_type) ? 'Controller Add-on (₹/hr)'
+          : rate.station_type === 'Pool' ? 'Extra Cue / Player (₹/hr)'
+          : rate.station_type === 'Dining' ? 'Extra Seat (N/A)'
+          : 'Add-on Rate (N/A)';
+        let disableAddon = !['PS5', 'Xbox', 'PS4'].includes(rate.station_type) ? 'disabled' : '';
 
         // Only SuperAdmin can configure pricing
         const isSuperAdmin = window.CURRENT_USER_ROLE === 'SuperAdmin';
@@ -31,20 +34,20 @@ async function loadPricingRates() {
 
         div.innerHTML = `
           <div class="flex justify-between items-center border-b border-slate-800 pb-2">
-            <h3 class="font-bold text-white font-cyber text-base tracking-wider">${rate.station_type} Terminals</h3>
+            <h3 class="font-bold text-slate-100 font-cyber text-base tracking-wider">${rate.station_type} Stations</h3>
             <span class="station-type-badge">${rate.station_type}</span>
           </div>
           
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div class="form-group mb-0">
               <label class="form-label text-[10px]">Standard Rate (₹/hr)</label>
-              <input type="number" step="0.50" min="0" value="${parseFloat(rate.hourly_rate).toFixed(2)}" 
+              <input type="number" step="0.01" min="0" value="${parseFloat(rate.hourly_rate).toFixed(2)}" 
                      class="form-control rate-standard" data-type="${rate.station_type}" ${disabledAttr} required>
             </div>
             
             <div class="form-group mb-0">
               <label class="form-label text-[10px]">${addonLabel}</label>
-              <input type="number" step="0.25" min="0" value="${parseFloat(rate.controller_addon_rate).toFixed(2)}" 
+              <input type="number" step="0.01" min="0" value="${parseFloat(rate.controller_addon_rate).toFixed(2)}" 
                      class="form-control rate-addon" data-type="${rate.station_type}" ${disableAddon || disabledAttr} required>
             </div>
           </div>
@@ -54,7 +57,7 @@ async function loadPricingRates() {
     }
   } catch (err) {
     container.innerHTML = `
-      <div class="py-6 text-center text-neonRed font-bold">Failed to load hourly pricing rules: ${err.message}</div>
+      <div class="py-6 text-center text-rust font-bold">Failed to load hourly pricing rules: ${err.message}</div>
     `;
   }
 }
@@ -67,7 +70,7 @@ if (ratesForm) {
     if (window.CURRENT_USER_ROLE !== 'SuperAdmin') return;
 
     const ratesPayload = [];
-    const types = ['PC', 'PS5', 'Xbox', 'VR', 'Other'];
+    const types = ['PC', 'PS5', 'PS4', 'Xbox', 'VR', 'Pool', 'Dining', 'Other'];
 
     types.forEach(type => {
       const standardInput = document.querySelector(`.rate-standard[data-type="${type}"]`);
@@ -105,7 +108,7 @@ async function loadCouponsList() {
     if (data.success) {
       container.innerHTML = '';
       if (data.coupons.length === 0) {
-        container.innerHTML = '<div class="py-6 text-center text-slate-500 italic">No coupons logged.</div>';
+        container.innerHTML = '<div class="py-8 text-center text-slate-500 italic"><i class="fa-solid fa-ticket text-2xl text-slate-600 mb-2"></i><br>No coupons yet. Click "Create" to add one.</div>';
         return;
       }
 
@@ -124,9 +127,9 @@ async function loadCouponsList() {
 
         div.innerHTML = `
           <div>
-            <div class="font-bold text-white font-cyber text-sm tracking-wider flex items-center gap-2">
-              <span class="text-neonPink">${coupon.code}</span>
-              <span class="text-xs text-neonCyan">(${valueStr})</span>
+            <div class="font-bold text-slate-100 font-cyber text-sm tracking-wider flex items-center gap-2">
+              <span class="text-clay">${coupon.code}</span>
+              <span class="text-xs text-wood">(${valueStr})</span>
             </div>
             <div class="text-[10px] text-slate-500">${details}</div>
           </div>
@@ -136,7 +139,7 @@ async function loadCouponsList() {
       });
     }
   } catch (err) {
-    container.innerHTML = '<div class="py-6 text-center text-neonRed">Failed to load coupons.</div>';
+    container.innerHTML = '<div class="py-6 text-center text-rust">Failed to load coupons.</div>';
   }
 }
 
@@ -200,6 +203,16 @@ async function loadBillingSettings() {
       document.getElementById('setting-discount-bronze').value = parseFloat(s.discount_bronze || '5.00').toFixed(2);
       document.getElementById('setting-discount-silver').value = parseFloat(s.discount_silver || '10.00').toFixed(2);
       document.getElementById('setting-discount-gold').value = parseFloat(s.discount_gold || '15.00').toFixed(2);
+
+      // Load station type toggles
+      if (s.enabled_station_types) {
+        try {
+          const enabled = JSON.parse(s.enabled_station_types);
+          document.querySelectorAll('.station-toggle').forEach(cb => {
+            cb.checked = enabled.includes(cb.value);
+          });
+        } catch(e) {}
+      }
     }
   } catch (err) {
     showToast('Failed to load global settings: ' + err.message, 'error');
@@ -217,7 +230,10 @@ if (settingsForm) {
       tax_percent: parseFloat(document.getElementById('setting-tax-percent').value),
       discount_bronze: parseFloat(document.getElementById('setting-discount-bronze').value),
       discount_silver: parseFloat(document.getElementById('setting-discount-silver').value),
-      discount_gold: parseFloat(document.getElementById('setting-discount-gold').value)
+      discount_gold: parseFloat(document.getElementById('setting-discount-gold').value),
+      enabled_station_types: JSON.stringify(
+        Array.from(document.querySelectorAll('.station-toggle:checked')).map(cb => cb.value)
+      )
     };
 
     try {

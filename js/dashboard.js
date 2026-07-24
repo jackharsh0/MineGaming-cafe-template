@@ -12,8 +12,7 @@ let billingSettings = {
 
 // Dom Elements
 const stationGrid = document.getElementById('dashboard-station-grid');
-const typeFilter = document.getElementById('filter-type');
-const statusFilter = document.getElementById('filter-status');
+let currentFilter = 'ALL';
 
 // Load Data on Load
 document.addEventListener('DOMContentLoaded', () => {
@@ -24,9 +23,19 @@ document.addEventListener('DOMContentLoaded', () => {
   loadStatsSummary();
   setInterval(loadStatsSummary, 10000);
 
-  // Filter Listeners
-  if (typeFilter) typeFilter.addEventListener('change', renderStationGrid);
-  if (statusFilter) statusFilter.addEventListener('change', renderStationGrid);
+  // Filter chip listeners
+  document.querySelectorAll('.status-chip').forEach(chip => {
+    chip.addEventListener('click', function () {
+      document.querySelectorAll('.status-chip').forEach(c => {
+        c.classList.remove('active', 'bg-wood', 'text-cream');
+        c.classList.add('bg-kraft', 'border', 'border-slate-700', 'text-slate-400');
+      });
+      this.classList.add('active', 'bg-wood', 'text-cream');
+      this.classList.remove('bg-kraft', 'border', 'border-slate-700', 'text-slate-400');
+      currentFilter = this.dataset.filter;
+      renderStationGrid();
+    });
+  });
 
   // Prepaid confirmation submit
   const prepaidForm = document.getElementById('form-prepaid-confirm');
@@ -55,7 +64,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         closeModal('modal-prepaid-confirm');
-        showToast('Prepaid terminal session connected successfully!', 'success');
+        showToast('Prepaid session started successfully!', 'success');
         loadStations();
         loadStatsSummary();
       } catch (err) {
@@ -97,12 +106,20 @@ window.addEventListener('sessionTimerTick', (e) => {
     
     if (timerElem) {
       if (tick.status === 'Paused') {
-        timerElem.innerHTML = `<span class="text-neonGold">PAUSED</span>`;
+        if (tick.has_limit && tick.seconds_left <= 0) {
+          timerElem.innerHTML = `<span class="text-cyan-400 font-cyber">FINISHED</span>`;
+        } else {
+          timerElem.innerHTML = `<span class="text-brass">PAUSED</span>`;
+        }
         timerElem.className = 'station-timer';
       } else {
         const isCountdown = tick.has_limit;
         const timeVal = isCountdown ? tick.seconds_left : tick.seconds_elapsed;
-        timerElem.innerText = formatTimeSeconds(timeVal);
+        if (typeof timeVal !== 'number' || isNaN(timeVal)) {
+          timerElem.innerText = '00:00:00';
+        } else {
+          timerElem.innerText = formatTimeSeconds(timeVal);
+        }
         
         // Add low time warning if countdown and < 5 mins (300 seconds)
         if (isCountdown && timeVal <= 300) {
@@ -114,7 +131,8 @@ window.addEventListener('sessionTimerTick', (e) => {
     }
 
     if (costElem) {
-      costElem.innerText = `₹${tick.game_cost.toFixed(2)}`;
+      const cost = typeof tick.game_cost === 'number' && !isNaN(tick.game_cost) ? tick.game_cost : 0;
+      costElem.innerText = `₹${cost.toFixed(2)}`;
     }
   });
 });
@@ -180,9 +198,9 @@ async function loadStations() {
   } catch (err) {
     console.error(err);
     stationGrid.innerHTML = `
-      <div class="col-span-full py-12 text-center text-neonRed">
+      <div class="col-span-full py-12 text-center text-rust">
         <i class="fa-solid fa-triangle-exclamation text-3xl mb-2 animate-bounce"></i>
-        <p class="font-bold">Security Terminal Connection Failure</p>
+        <p class="font-bold">Connection Failure</p>
         <p class="text-xs text-slate-500 mt-1">Please check if the Express backend service is running on port 8000.</p>
       </div>
     `;
@@ -194,16 +212,21 @@ async function loadStatsSummary() {
     const data = await apiFetch('/analytics/summary');
     if (data.success) {
       const summary = data.summary;
-      document.getElementById('widget-revenue').innerText = `₹${summary.gross_revenue.toFixed(2)}`;
-      document.getElementById('widget-occupancy').innerText = `${summary.occupancy_rate}%`;
-      document.getElementById('widget-occupancy-ratio').innerText = `${summary.occupied_stations} of ${summary.total_stations} stations active`;
+      const revEl = document.getElementById('widget-revenue');
+      if (revEl) revEl.innerText = `₹${summary.gross_revenue.toFixed(2)}`;
+      const occEl = document.getElementById('widget-occupancy');
+      if (occEl) occEl.innerText = `${summary.occupancy_rate}%`;
+      const ratioEl = document.getElementById('widget-occupancy-ratio');
+      if (ratioEl) ratioEl.innerText = `${summary.occupied_stations} of ${summary.total_stations} stations active`;
       
       const lowStockWidget = document.getElementById('widget-low-stock');
-      lowStockWidget.innerText = summary.low_stock_count;
-      if (summary.low_stock_count > 0) {
-        lowStockWidget.className = 'widget-value text-neonRed animate-pulse';
-      } else {
-        lowStockWidget.className = 'widget-value text-neonGold';
+      if (lowStockWidget) {
+        lowStockWidget.innerText = summary.low_stock_count;
+        if (summary.low_stock_count > 0) {
+          lowStockWidget.className = 'widget-value text-rust vintage-breathe';
+        } else {
+          lowStockWidget.className = 'widget-value text-brass';
+        }
       }
     }
   } catch (err) {
@@ -216,19 +239,38 @@ async function loadPlayersList() {
     const data = await apiFetch('/players');
     if (data.success) {
       const select = document.getElementById('start-player-id');
-      if (!select) return;
-      
-      // Clear except guest
-      select.innerHTML = '<option value="">-- Guest Walk-in --</option>';
-      data.players.forEach(player => {
-        if (!player.is_blacklisted) {
-          const opt = document.createElement('option');
-          opt.value = player.id;
-          opt.dataset.tier = player.loyalty_tier;
-          opt.innerText = `${player.name} (${player.phone}) - [${player.loyalty_tier}]`;
-          select.appendChild(opt);
-        }
-      });
+      if (select) {
+        // Clear except guest
+        select.innerHTML = '<option value="">-- Guest Walk-in --</option>';
+        data.players.forEach(player => {
+          if (!player.is_blacklisted) {
+            const opt = document.createElement('option');
+            opt.value = player.id;
+            opt.dataset.tier = player.loyalty_tier;
+            opt.innerText = `${player.name} (${player.phone}) - [${player.loyalty_tier}]`;
+            select.appendChild(opt);
+          }
+        });
+      }
+
+      // Populate checkout players datalist for autocomplete search
+      const datalist = document.getElementById('checkout-players-list');
+      if (datalist) {
+        datalist.innerHTML = '';
+        data.players.forEach(player => {
+          if (!player.is_blacklisted) {
+            const opt = document.createElement('option');
+            opt.value = player.phone;
+            opt.innerText = `${player.name} - [${player.loyalty_tier}]`;
+            datalist.appendChild(opt);
+          }
+        });
+      }
+      // Initialize premium selection sliders
+      if (typeof initMemberSlider === 'function') {
+        initMemberSlider('start-player-id', 'id', true);
+        initMemberSlider('checkout-customer-phone', 'phone', true);
+      }
     }
   } catch (err) {
     console.error('Failed to load players list:', err);
@@ -239,13 +281,10 @@ function renderStationGrid() {
   if (!stationGrid) return;
   stationGrid.innerHTML = '';
 
-  const typeVal = typeFilter.value;
-  const statusVal = statusFilter.value;
-
   const filtered = allStations.filter(station => {
-    const matchType = typeVal === 'ALL' || station.type === typeVal;
-    const matchStatus = statusVal === 'ALL' || station.status === statusVal;
-    return matchType && matchStatus;
+    if (station.type === 'Dining') return false;
+    const matchStatus = currentFilter === 'ALL' || station.status === currentFilter;
+    return matchStatus;
   });
 
   if (filtered.length === 0) {
@@ -253,6 +292,7 @@ function renderStationGrid() {
       <div class="col-span-full py-12 text-center text-slate-500">
         <i class="fa-solid fa-circle-info text-xl mb-1"></i>
         <p>No stations match selected filters.</p>
+        <p class="text-xs mt-1 text-slate-600">Try changing the filter or add stations via the Stations page.</p>
       </div>
     `;
     return;
@@ -278,18 +318,18 @@ function renderStationGrid() {
         footerHTML = `<div class="text-center text-[10px] text-slate-500 italic py-2 border-t border-slate-800/50 w-full">No Actions Allowed</div>`;
       } else {
         footerHTML = `
-          <button onclick="triggerStartSession(${station.id}, '${station.name}', '${station.type}')" class="btn btn-primary btn-sm flex-grow">
-            <i class="fa-solid fa-play"></i> Start
+          <button onclick="triggerStartSession(${station.id}, '${station.name}', '${station.type}')" class="btn btn-primary btn-sm flex-grow flex items-center justify-center gap-1.5 py-2">
+            <i class="fa-solid fa-play"></i> Start Session
           </button>
-          <button onclick="toggleMaintenance(${station.id})" class="btn btn-secondary btn-sm" title="Toggle Maintenance">
-            <i class="fa-solid fa-screwdriver-wrench text-neonGold"></i>
+          <button onclick="toggleMaintenance(${station.id})" class="btn btn-secondary btn-sm flex items-center justify-center gap-1 py-2" title="Put in Maintenance">
+            <i class="fa-solid fa-screwdriver-wrench text-brass"></i> Service
           </button>
         `;
       }
     } else if (station.status === 'Maintenance') {
       bodyHTML = `
         <div class="text-center py-4">
-          <span class="badge badge-gold mb-2 animate-pulse">UNDER MAINTENANCE</span>
+          <span class="badge badge-gold mb-2 vintage-breathe">UNDER MAINTENANCE</span>
           <p class="text-xs text-slate-500">${station.specs_peripherals || 'Hardware checks ongoing'}</p>
         </div>
       `;
@@ -297,21 +337,28 @@ function renderStationGrid() {
         footerHTML = `<div class="text-center text-[10px] text-slate-500 italic py-2 border-t border-slate-800/50 w-full">Under Maintenance</div>`;
       } else {
         footerHTML = `
-          <button onclick="toggleMaintenance(${station.id})" class="btn btn-success btn-sm flex-grow">
+          <button onclick="toggleMaintenance(${station.id})" class="btn btn-success btn-sm flex-grow flex items-center justify-center gap-1.5 py-2">
             <i class="fa-solid fa-power-off"></i> Bring Online
           </button>
         `;
       }
     } else if (station.status === 'Occupied') {
-      const sess = activeSession || { session_type: 'Prepaid', game_cost: 0.00, has_limit: false };
-      const timeDisplay = sess.status === 'Paused' ? '<span class="text-neonGold">PAUSED</span>' : '00:00:00';
+      const sess = activeSession || { session_type: 'Prepaid', game_cost: 0.00, has_limit: false, seconds_left: 0 };
+      let timeDisplay = '00:00:00';
+      if (sess.status === 'Paused') {
+        if (sess.has_limit && sess.seconds_left <= 0) {
+          timeDisplay = '<span class="text-cyan-400 font-cyber">FINISHED</span>';
+        } else {
+          timeDisplay = '<span class="text-brass">PAUSED</span>';
+        }
+      }
       const timerTypeClass = sess.has_limit ? 'station-timer' : 'station-timer postpaid';
 
       bodyHTML = `
         <div class="mb-2">
           <div class="flex justify-between items-center">
             <span class="badge ${sess.session_type === 'Prepaid' ? 'badge-cyan' : 'badge-pink'}">${sess.session_type}</span>
-            <span class="text-[11px] text-neonCyan font-bold font-cyber" id="cost-${station.id}">₹${sess.game_cost.toFixed(2)}</span>
+            <span class="text-[11px] text-wood font-bold font-cyber" id="cost-${station.id}">₹${sess.game_cost.toFixed(2)}</span>
           </div>
           <div class="text-center mt-2">
             <div class="${timerTypeClass}" id="timer-${station.id}">${timeDisplay}</div>
@@ -322,45 +369,52 @@ function renderStationGrid() {
       if (window.CURRENT_USER_ROLE === 'Attendant') {
         footerHTML = `
           <div class="w-full flex justify-center border-t border-slate-800/50 pt-2 mt-1">
-            <a href="pos.php?session_id=${sess.id}" class="btn btn-success btn-sm w-full font-cyber uppercase tracking-wider">
+            <button onclick="openFoodModalDashForSession(${sess.id})" class="btn btn-success btn-sm w-full font-cyber uppercase tracking-wider">
               <i class="fa-solid fa-cookie-bite mr-1"></i> Add Food
-            </a>
+            </button>
           </div>
         `;
       } else {
         // Pausing controls
+        const hasExtend = (sess.session_type === 'Prepaid' || sess.has_limit);
         const playPauseBtn = sess.status === 'Paused' 
-          ? `<button onclick="resumeSession(${sess.id})" class="btn btn-success btn-sm flex-grow" title="Resume Session"><i class="fa-solid fa-play"></i></button>`
-          : `<button onclick="pauseSession(${sess.id})" class="btn btn-secondary btn-sm flex-grow" title="Pause Session"><i class="fa-solid fa-pause"></i></button>`;
+          ? `<button onclick="resumeSession(${sess.id})" class="btn btn-success btn-sm ${hasExtend ? '' : 'col-span-2'} flex items-center justify-center gap-1" title="Resume Session"><i class="fa-solid fa-play"></i> Play</button>`
+          : `<button onclick="pauseSession(${sess.id})" class="btn btn-secondary btn-sm ${hasExtend ? '' : 'col-span-2'} flex items-center justify-center gap-1" title="Pause Session"><i class="fa-solid fa-pause"></i> Pause</button>`;
 
-        const extendBtn = (sess.session_type === 'Prepaid' || sess.has_limit)
-          ? `<button onclick="triggerExtend(${sess.id}, '${station.name}')" class="btn btn-primary btn-sm flex-grow" title="Add Time"><i class="fa-solid fa-clock-rotate-left"></i></button>`
+        const extendBtn = hasExtend
+          ? `<button onclick="triggerExtend(${sess.id}, '${station.name}')" class="btn btn-primary btn-sm flex items-center justify-center gap-1" title="Add Time"><i class="fa-solid fa-clock-rotate-left"></i> +Time</button>`
           : '';
+
+        const foodBtn = `<button onclick="openFoodModalDashForSession(${sess.id})" class="btn btn-success btn-sm flex items-center justify-center gap-1" title="Add Food"><i class="fa-solid fa-cookie-bite"></i> +Food</button>`;
+        const transferBtn = `<button onclick="triggerTransfer(${sess.id}, '${station.name}')" class="btn btn-secondary btn-sm flex items-center justify-center gap-1" title="Transfer Station"><i class="fa-solid fa-arrows-left-right text-wood"></i> Move</button>`;
+        const mergeBtn = `<button onclick="triggerMergeToTable(${sess.id}, '${station.name}')" class="btn btn-accent btn-sm col-span-2 flex items-center justify-center gap-1" title="Merge to Dining Table"><i class="fa-solid fa-code-merge text-clay"></i> Merge to Table</button>`;
 
         if (sess.session_type === 'Prepaid') {
           footerHTML = `
-            <div class="flex flex-col w-full gap-2">
-              <div class="flex gap-2 w-full font-cyber">
+            <div class="flex flex-col w-full gap-2 mt-2">
+              <div class="grid grid-cols-2 gap-1.5 w-full text-[11px] font-cyber">
                 ${playPauseBtn}
                 ${extendBtn}
-                <a href="pos.php?session_id=${sess.id}" class="btn btn-success btn-sm flex-grow flex items-center justify-center" title="Add Food"><i class="fa-solid fa-cookie-bite"></i></a>
-                <button onclick="triggerTransfer(${sess.id}, '${station.name}')" class="btn btn-secondary btn-sm" title="Transfer Station"><i class="fa-solid fa-arrows-left-right text-neonCyan"></i></button>
+                ${foodBtn}
+                ${transferBtn}
+                ${mergeBtn}
               </div>
-              <button onclick="stopPrepaidSession(${sess.id})" class="btn btn-danger btn-sm w-full font-cyber uppercase tracking-wider">
+              <button onclick="stopPrepaidSession(${sess.id})" class="btn btn-danger btn-sm w-full font-cyber uppercase tracking-wider py-1.5 mt-1">
                 <i class="fa-solid fa-circle-stop mr-1"></i> Stop Session
               </button>
             </div>
           `;
         } else {
           footerHTML = `
-            <div class="flex flex-col w-full gap-2">
-              <div class="flex gap-2 w-full font-cyber">
+            <div class="flex flex-col w-full gap-2 mt-2">
+              <div class="grid grid-cols-2 gap-1.5 w-full text-[11px] font-cyber">
                 ${playPauseBtn}
                 ${extendBtn}
-                <a href="pos.php?session_id=${sess.id}" class="btn btn-success btn-sm flex-grow flex items-center justify-center" title="Add Food"><i class="fa-solid fa-cookie-bite"></i></a>
-                <button onclick="triggerTransfer(${sess.id}, '${station.name}')" class="btn btn-secondary btn-sm" title="Transfer Station"><i class="fa-solid fa-arrows-left-right text-neonCyan"></i></button>
+                ${foodBtn}
+                ${transferBtn}
+                ${mergeBtn}
               </div>
-              <button onclick="triggerCheckout(${sess.id})" class="btn btn-accent btn-sm w-full">
+              <button onclick="triggerCheckout(${sess.id})" class="btn btn-accent btn-sm w-full py-1.5 mt-1 flex items-center justify-center gap-1">
                 <i class="fa-solid fa-cash-register"></i> Stop & Pay
               </button>
             </div>
@@ -395,7 +449,7 @@ function triggerStartSession(stationId, name, type) {
   
   // Show controller selection only if Console (PS5, Xbox, etc)
   const ctrlGrp = document.getElementById('controller-count-group');
-  if (type === 'PS5' || type === 'Xbox') {
+  if (type === 'PS5' || type === 'Xbox' || type === 'PS4') {
     ctrlGrp.style.display = 'block';
   } else {
     ctrlGrp.style.display = 'none';
@@ -478,15 +532,14 @@ document.getElementById('form-start-session').addEventListener('submit', async (
         }
         
         const rawCost = (durationMinutes / 60) * baseRate;
-        let discountPct = 0.05;
+        let discountPct = 0;
         if (loyaltyTier === 'Gold') discountPct = parseFloat(billingSettings.discount_gold || '15.00') / 100;
         else if (loyaltyTier === 'Silver') discountPct = parseFloat(billingSettings.discount_silver || '10.00') / 100;
-        else discountPct = parseFloat(billingSettings.discount_bronze || '5.00') / 100;
 
         discount = parseFloat((rawCost * discountPct).toFixed(2));
-        subtotal = parseFloat((rawCost - discount).toFixed(2));
-        tax = parseFloat((subtotal * taxRate).toFixed(2));
-        total = parseFloat((subtotal + tax).toFixed(2));
+        total = parseFloat((rawCost - discount).toFixed(2));
+        subtotal = parseFloat((total / (1 + taxRate)).toFixed(2));
+        tax = parseFloat((total - subtotal).toFixed(2));
       }
     } else {
       showToast('Prepaid amount or duration is required', 'warning');
@@ -537,7 +590,7 @@ document.getElementById('form-start-session').addEventListener('submit', async (
     });
 
     closeModal('modal-start-session');
-    showToast('Terminal session connected successfully!', 'success');
+    showToast('Session started successfully!', 'success');
     loadStations();
     loadStatsSummary();
   } catch (err) {
@@ -690,29 +743,92 @@ async function triggerCheckout(sessId) {
       document.getElementById('rcpt-elapsed-time').innerText = `${info.elapsed_minutes} Mins`;
 
       document.getElementById('rcpt-game-desc').innerText = `Game Play: ${info.session_type}`;
-      document.getElementById('rcpt-game-qty').innerText = info.elapsed_minutes > 0 ? `${(info.elapsed_minutes / 60).toFixed(2)} hr` : '0 hr';
-      document.getElementById('rcpt-game-rate').innerText = `₹${parseFloat(billing.game_cost / (info.elapsed_minutes/60 || 1)).toFixed(2)}`;
+      document.getElementById('rcpt-game-qty').innerText = info.billed_minutes > 0 ? `${(info.billed_minutes / 60).toFixed(2)} hr` : '0 hr';
+      document.getElementById('rcpt-game-rate').innerText = `₹${parseFloat(billing.game_cost / (info.billed_minutes/60 || 1)).toFixed(2)}`;
       document.getElementById('rcpt-game-cost').innerText = `₹${billing.game_cost.toFixed(2)}`;
 
-      // Cafe items
+      // Cafe and Terminal items
       const cafeContainer = document.getElementById('rcpt-cafe-items-container');
+      const terminalContainer = document.getElementById('rcpt-terminal-items-container');
       cafeContainer.innerHTML = '';
+      terminalContainer.innerHTML = '';
+      terminalContainer.style.display = 'none';
       
       const posItems = await apiFetch(`/pos/session/${sessId}`);
       if (posItems.success && posItems.items.length > 0) {
+        let hasTerminalItems = false;
+        let hasCafeItems = false;
+        
         posItems.items.forEach(item => {
-          const row = document.createElement('div');
-          row.className = 'grid grid-cols-12 gap-1 text-[11px] text-slate-400';
           const rate = parseFloat(item.unit_price).toFixed(2);
           const total = parseFloat(item.total_price).toFixed(2);
-          row.innerHTML = `
-            <span class="col-span-6">+ ${item.item_name}</span>
-            <span class="col-span-2 text-center">${item.quantity}</span>
-            <span class="col-span-2 text-right">₹${rate}</span>
-            <span class="col-span-2 text-right text-slate-300">₹${total}</span>
-          `;
-          cafeContainer.appendChild(row);
+          
+          if (parseInt(item.item_id) === 999) {
+            hasTerminalItems = true;
+            
+            // Build terminal session time details
+            let timeDetails = '';
+            if (item.terminal_station_name) {
+              timeDetails += `<div class="text-[10px] text-slate-500"><span class="text-slate-400">Station:</span> ${item.terminal_station_name}</div>`;
+            }
+            if (item.terminal_start_time) {
+              const startTime = new Date(item.terminal_start_time);
+              const fmtTime = (d) => d.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+              const fmtDate = (d) => d.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' });
+              
+              timeDetails += `<div class="text-[10px] text-slate-500"><span class="text-slate-400">Time:</span> ${fmtTime(startTime)} - ${item.terminal_end_time ? fmtTime(new Date(item.terminal_end_time)) : 'Now'}</div>`;
+              
+              if (item.terminal_target_end_time) {
+                const targetTime = new Date(item.terminal_target_end_time);
+                timeDetails += `<div class="text-[10px] text-slate-500"><span class="text-slate-400">Target:</span> ${fmtTime(targetTime)} (estimated)</div>`;
+              }
+              
+              // Calculate real elapsed
+              const startMs = new Date(item.terminal_start_time).getTime();
+              const endMs = item.terminal_end_time ? new Date(item.terminal_end_time).getTime() : Date.now();
+              const elapsedMin = Math.round((endMs - startMs) / 60000);
+              timeDetails += `<div class="text-[10px] text-slate-500"><span class="text-slate-400">Elapsed:</span> ${elapsedMin} min (real-time)</div>`;
+            }
+            if (item.terminal_hourly_rate && parseFloat(item.terminal_hourly_rate) > 0) {
+              timeDetails += `<div class="text-[10px] text-slate-500"><span class="text-slate-400">Rate:</span> ₹${parseFloat(item.terminal_hourly_rate).toFixed(2)}/hr</div>`;
+            }
+            if (item.terminal_payment_method) {
+              timeDetails += `<div class="text-[10px] text-slate-500"><span class="text-slate-400">Paid via:</span> ${item.terminal_payment_method}</div>`;
+            }
+            
+            const detailsBlock = timeDetails ? `<div class="mt-1 space-y-0.5 col-span-12">${timeDetails}</div>` : '';
+            
+            const row = document.createElement('div');
+            row.className = 'grid grid-cols-12 gap-1 text-[11px] text-slate-400 items-center border-t border-dashed border-slate-800 pt-2 mt-1';
+            row.innerHTML = `
+              <span class="col-span-6 flex items-start"><span class="truncate text-wood font-bold">Terminal: ${item.item_name}</span></span>
+              <span class="col-span-2 text-center">${parseFloat(item.quantity).toFixed(2)} hr</span>
+              <span class="col-span-2 text-right">₹${rate}</span>
+              <span class="col-span-2 text-right text-slate-300">₹${total}</span>
+              ${detailsBlock}
+            `;
+            terminalContainer.appendChild(row);
+          } else {
+            hasCafeItems = true;
+            const row = document.createElement('div');
+            row.className = 'grid grid-cols-12 gap-1 text-[11px] text-slate-400 items-center';
+            const deleteBtn = `<button type="button" onclick="removeReceiptFoodItem(${item.id}, ${sessId})" class="text-clay hover:text-red-500 font-bold mr-1 text-xs" title="Remove Item">&times;</button>`;
+            row.innerHTML = `
+              <span class="col-span-6 flex items-center">${deleteBtn} <span class="truncate">${item.item_name}</span></span>
+              <span class="col-span-2 text-center">${item.quantity}</span>
+              <span class="col-span-2 text-right">₹${rate}</span>
+              <span class="col-span-2 text-right text-slate-300">₹${total}</span>
+            `;
+            cafeContainer.appendChild(row);
+          }
         });
+        
+        if (hasTerminalItems) {
+          terminalContainer.style.display = 'block';
+        }
+        if (!hasCafeItems) {
+          cafeContainer.innerHTML = '<div class="text-[10px] text-slate-500 italic py-1">No cafe purchases linked</div>';
+        }
       } else {
         cafeContainer.innerHTML = '<div class="text-[10px] text-slate-500 italic py-1">No cafe purchases linked</div>';
       }
@@ -726,10 +842,44 @@ async function triggerCheckout(sessId) {
       // Populate totals
       updateInvoiceDom(billing.subtotal, 0.00, billing.tax, billing.total);
 
-      // Populate wallet split limits
-      document.getElementById('checkout-available-wallet').innerText = parseFloat(info.wallet_balance || 0).toFixed(2);
-      document.getElementById('checkout-split-wallet').value = '0.00';
+      // Populate play hours split limits
+      document.getElementById('checkout-available-play-hours').innerText = parseFloat(info.play_hours || 0).toFixed(2);
+      document.getElementById('checkout-split-play-hours').value = '0.00';
       document.getElementById('checkout-split-cash').value = '0.00';
+
+      // Reset phone number input
+      const phoneInput = document.getElementById('checkout-customer-phone');
+      if (phoneInput) {
+        phoneInput.value = '';
+        if (info.player_id) {
+          phoneInput.disabled = true;
+          phoneInput.value = info.player_phone || '';
+        } else {
+          phoneInput.disabled = false;
+        }
+      }
+
+      // Populate dining tables dropdown
+      const mergeSelect = document.getElementById('checkout-merge-table-id');
+      const mergeSection = document.getElementById('checkout-merge-table-section');
+      if (mergeSelect) {
+        mergeSelect.innerHTML = '<option value="">-- No Transfer --</option>';
+        if (info.station_type === 'Dining') {
+          if (mergeSection) mergeSection.style.display = 'none';
+        } else {
+          if (mergeSection) mergeSection.style.display = '';
+          const activeDiningStations = allStations.filter(s => s.type === 'Dining' && s.status === 'Occupied');
+          activeDiningStations.forEach(st => {
+            const activeSess = activeSessionsMap.get(st.id);
+            if (activeSess) {
+              const opt = document.createElement('option');
+              opt.value = activeSess.id; // Dining session ID
+              opt.innerText = `${st.name} (Session #${activeSess.id})`;
+              mergeSelect.appendChild(opt);
+            }
+          });
+        }
+      }
 
       openModal('modal-checkout-session');
     }
@@ -803,14 +953,31 @@ function stopPrepaidSession(sessId) {
   });
 }
 
+// Toggle checkout button to merge when dining table is selected
+document.getElementById('checkout-merge-table-id').addEventListener('change', function () {
+  const submitBtn = document.querySelector('#form-checkout-session button[type="submit"]');
+  if (this.value) {
+    if (submitBtn) submitBtn.innerText = 'Merge to Table';
+  } else {
+    if (submitBtn) submitBtn.innerText = 'Confirm Payment';
+  }
+});
+
 // Submit payment checkout
 document.getElementById('form-checkout-session').addEventListener('submit', async (e) => {
   e.preventDefault();
+  const diningSessionId = document.getElementById('checkout-merge-table-id').value;
+  if (diningSessionId) {
+    submitMergeToTable();
+    return;
+  }
+
   const sessId = document.getElementById('checkout-session-id').value;
   const paymentMethod = document.getElementById('checkout-payment-method').value;
   const couponCode = document.getElementById('checkout-coupon-code').value || null;
-  const walletSplitAmount = parseFloat(document.getElementById('checkout-split-wallet').value) || 0.00;
+  const playHoursSplitAmount = parseFloat(document.getElementById('checkout-split-play-hours').value) || 0.00;
   const cashSplitAmount = parseFloat(document.getElementById('checkout-split-cash').value) || 0.00;
+  const customerPhone = document.getElementById('checkout-customer-phone').value || null;
 
   try {
     const data = await apiFetch(`/billing/checkout/${sessId}`, {
@@ -818,8 +985,9 @@ document.getElementById('form-checkout-session').addEventListener('submit', asyn
       body: JSON.stringify({
         paymentMethod,
         couponCode,
-        walletSplitAmount,
-        cashSplitAmount
+        playHoursSplitAmount,
+        cashSplitAmount,
+        customerPhone
       })
     });
 
@@ -885,17 +1053,122 @@ function recalculatePrepaidAmount() {
     hourlyRate = hourlyRate + ((controllerCount - 1) * parseFloat(rule.controller_addon_rate));
   }
 
-  let discountPct = 0.05;
+  let discountPct = 0;
   if (loyaltyTier === 'Gold') discountPct = parseFloat(billingSettings.discount_gold || '15.00') / 100;
   else if (loyaltyTier === 'Silver') discountPct = parseFloat(billingSettings.discount_silver || '10.00') / 100;
-  else discountPct = parseFloat(billingSettings.discount_bronze || '5.00') / 100;
 
   const baseCost = (minutes / 60) * hourlyRate;
   const discount = baseCost * discountPct;
-  const subtotal = baseCost - discount;
-  const taxRate = parseFloat(billingSettings.tax_percent || '10.00') / 100;
-  const tax = subtotal * taxRate;
-  const totalCost = parseFloat((subtotal + tax).toFixed(2));
+  const totalCost = parseFloat((baseCost - discount).toFixed(2));
 
   document.getElementById('start-prepaid-amount').value = totalCost;
 }
+
+async function submitMergeToTable() {
+  const consoleSessionId = document.getElementById('checkout-session-id').value;
+  const diningSessionId = document.getElementById('checkout-merge-table-id').value;
+  if (!diningSessionId) {
+    showToast('Please select an active dining table to merge into.', 'error');
+    return;
+  }
+
+  const submitBtn = document.querySelector('#form-checkout-session button[type="submit"]');
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Merging...';
+  }
+
+  try {
+    const response = await apiFetch('/billing/merge-to-table', {
+      method: 'POST',
+      body: JSON.stringify({ consoleSessionId, diningSessionId })
+    });
+
+    if (response.success) {
+      showToast('Session charges successfully merged into dining table!', 'success');
+      closeModal('modal-checkout-session');
+      loadStations();
+      loadStatsSummary();
+    }
+  } catch (err) {
+    showToast(err.message || 'Failed to merge session', 'error');
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerText = 'Merge to Table';
+    }
+  }
+}
+
+async function removeReceiptFoodItem(saleItemId, sessId) {
+  if (!confirm('Are you sure you want to remove this item from the bill?')) return;
+  try {
+    const data = await apiFetch(`/pos/sale-item/${saleItemId}`, { method: 'DELETE' });
+    if (data.success) {
+      showToast('Item removed from bill successfully!', 'success');
+      await triggerCheckout(sessId);
+      if (typeof loadStations === 'function') loadStations();
+    }
+  } catch (err) {
+    showToast(err.message || 'Failed to remove item', 'error');
+  }
+}
+
+// ==========================================
+// MERGE TO TABLE — Terminal → Dining Table
+// ==========================================
+async function triggerMergeToTable(sessId, stationName) {
+  document.getElementById('merge-to-table-session-id').value = sessId;
+  document.getElementById('merge-to-table-title').innerText = `Merge ${stationName} → Dining Table`;
+
+  const select = document.getElementById('merge-to-table-target');
+  select.innerHTML = '<option value="">⏳ Loading active tables...</option>';
+
+  try {
+    const data = await apiFetch('/billing/active-sessions');
+    select.innerHTML = '<option value="">-- Select a Dining Table --</option>';
+    if (data.success && data.tables.length > 0) {
+      data.tables.forEach(t => {
+        const opt = document.createElement('option');
+        opt.value = t.id;
+        opt.innerText = `${t.station_name} — ${t.player_name} (${t.elapsed_minutes} min elapsed)`;
+        select.appendChild(opt);
+      });
+    } else {
+      select.innerHTML = '<option value="">No active dining tables found</option>';
+    }
+    openModal('modal-merge-to-table');
+  } catch (err) {
+    showToast('Failed to load dining tables: ' + err.message, 'error');
+  }
+}
+
+document.getElementById('form-merge-to-table').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const consoleSessionId = document.getElementById('merge-to-table-session-id').value;
+  const diningSessionId = document.getElementById('merge-to-table-target').value;
+  if (!diningSessionId) {
+    showToast('Please select a dining table to merge into', 'warning');
+    return;
+  }
+
+  const btn = e.submitter;
+  if (btn) { btn.disabled = true; btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Merging...'; }
+
+  try {
+    const data = await apiFetch('/billing/merge-to-table', {
+      method: 'POST',
+      body: JSON.stringify({ consoleSessionId, diningSessionId })
+    });
+    if (data.success) {
+      closeModal('modal-merge-to-table');
+      showToast(data.message, 'success');
+      loadStations();
+      loadStatsSummary();
+    }
+  } catch (err) {
+    showToast(err.message || 'Merge failed', 'error');
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fa-solid fa-code-merge mr-1"></i> Confirm Merge'; }
+  }
+});

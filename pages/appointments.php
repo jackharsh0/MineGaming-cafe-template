@@ -2,9 +2,9 @@
 include 'header.php';
 ?>
 
-<div class="bg-cyberPanel border border-slate-800 rounded-lg p-6">
+<div class="bg-parchment border border-slate-800 rounded-lg p-6">
   <div class="section-header flex justify-between items-center mb-6">
-    <h2 class="text-xl font-bold text-neonCyan flex items-center gap-2">
+    <h2 class="text-xl font-bold text-wood flex items-center gap-2">
       <i class="fa-solid fa-calendar-check"></i>
       <span>Appointment Booking Scheduler</span>
     </h2>
@@ -17,7 +17,7 @@ include 'header.php';
   <div class="flex gap-4 mb-6 items-center">
     <div class="flex items-center gap-2">
       <label class="text-xs font-bold uppercase text-slate-400" for="filter-appt-status">Filter Status</label>
-      <select id="filter-appt-status" class="bg-cyberDark border border-slate-700 px-3 py-1.5 text-xs rounded text-slate-300 focus:outline-none focus:border-neonCyan" onchange="renderAppointmentsTable()">
+      <select id="filter-appt-status" class="bg-cream border border-slate-700 px-3 py-1.5 text-xs rounded text-slate-300 focus:outline-none focus:border-wood" onchange="renderAppointmentsTable()">
         <option value="ALL">All Statuses</option>
         <option value="Pending">Pending</option>
         <option value="Confirmed">Confirmed</option>
@@ -59,7 +59,7 @@ include 'header.php';
      ========================================== -->
 
 <!-- Add/Edit Appointment Modal -->
-<div id="modal-appointment-crud" class="modal-overlay">
+<div id="modal-appointment-crud" class="modal-overlay" role="dialog" aria-modal="true">
   <div class="modal-container">
     <div class="modal-header">
       <h3 class="modal-title" id="appt-modal-title">Schedule New Appointment</h3>
@@ -79,13 +79,39 @@ include 'header.php';
           </div>
         </div>
 
+        <!-- Reservation Category -->
+        <div class="form-group">
+          <label class="form-label">What to reserve</label>
+          <div class="grid grid-cols-3 gap-2">
+            <button type="button" class="appt-category-btn bg-kraft border border-slate-700 rounded-lg p-2 text-center hover:border-wood transition duration-300" data-category="console" onclick="selectApptCategory('console', this)">
+              <span class="text-lg block">🎮</span>
+              <span class="text-[10px] font-cyber text-slate-100 uppercase">Console</span>
+            </button>
+            <button type="button" class="appt-category-btn bg-kraft border border-slate-700 rounded-lg p-2 text-center hover:border-wood transition duration-300" data-category="pool" onclick="selectApptCategory('pool', this)">
+              <span class="text-lg block">🎱</span>
+              <span class="text-[10px] font-cyber text-slate-100 uppercase">Pool</span>
+            </button>
+            <button type="button" class="appt-category-btn bg-kraft border border-slate-700 rounded-lg p-2 text-center hover:border-wood transition duration-300" data-category="dining" onclick="selectApptCategory('dining', this)">
+              <span class="text-lg block">🍽️</span>
+              <span class="text-[10px] font-cyber text-slate-100 uppercase">Table</span>
+            </button>
+          </div>
+        </div>
+
         <div class="grid grid-cols-2 gap-4">
-          <div class="form-group">
+          <div class="form-group" id="crud-appt-station-id-container">
             <label class="form-label" for="crud-appt-station-id">Assign Station / Console</label>
             <select id="crud-appt-station-id" class="form-control" required>
-              <option value="">-- Choose Station --</option>
+              <option value="">-- Choose a category first --</option>
               <!-- Dynamically populated by JS -->
             </select>
+          </div>
+          <!-- Interactive Box-type Console Selection -->
+          <div class="form-group hidden" id="crud-appt-station-boxes-container">
+            <label class="form-label">Select Station / Console</label>
+            <div id="crud-appt-station-boxes" class="grid grid-cols-3 gap-2 mt-1">
+              <!-- Dynamically populated by JS as clickable boxes -->
+            </div>
           </div>
           <div class="form-group" id="crud-appt-status-group" style="display: none;">
             <label class="form-label" for="crud-appt-status">Appointment Status</label>

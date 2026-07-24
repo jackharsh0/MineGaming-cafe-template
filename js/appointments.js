@@ -1,6 +1,8 @@
 // Appointments Scheduling Client Action Script
 
 let allAppointments = [];
+let allStationsCache = [];
+let selectedApptCategory = null;
 
 document.addEventListener('DOMContentLoaded', () => {
   loadAppointments();
@@ -43,7 +45,7 @@ async function loadAppointments() {
   } catch (err) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="9" class="text-center py-6 text-neonRed font-bold">Failed to load schedule: ${err.message}</td>
+        <td colspan="9" class="text-center py-6 text-rust font-bold">Failed to load schedule: ${err.message}</td>
       </tr>
     `;
   }
@@ -103,20 +105,20 @@ function renderAppointmentsTable() {
     }
 
     const editDeleteActions = `
-      <button onclick="triggerEditAppointment(${appt.id})" class="btn btn-secondary btn-sm" title="Edit Booking"><i class="fa-solid fa-pen-to-square text-neonCyan"></i></button>
-      ${window.CURRENT_USER_ROLE !== 'Attendant' ? `<button onclick="deleteAppointment(${appt.id})" class="btn btn-secondary btn-sm" title="Delete Booking"><i class="fa-solid fa-trash text-neonPink"></i></button>` : ''}
+      <button onclick="triggerEditAppointment(${appt.id})" class="btn btn-secondary btn-sm" title="Edit Booking"><i class="fa-solid fa-pen-to-square text-wood"></i></button>
+      ${window.CURRENT_USER_ROLE !== 'Attendant' ? `<button onclick="deleteAppointment(${appt.id})" class="btn btn-secondary btn-sm" title="Delete Booking"><i class="fa-solid fa-trash text-clay"></i></button>` : ''}
     `;
 
     tr.innerHTML = `
       <td class="font-mono text-xs text-slate-500">#${appt.id}</td>
-      <td class="font-bold text-white">${appt.player_name}</td>
+      <td class="font-bold text-slate-100">${appt.player_name}</td>
       <td class="font-mono text-xs text-slate-400">${appt.player_phone}</td>
       <td>
         <div class="font-bold text-xs">${appt.station_name}</div>
         <div class="text-[10px] text-slate-500 uppercase tracking-widest font-mono">${appt.station_type}</div>
       </td>
       <td class="text-xs text-slate-300 font-cyber font-bold">${dateStr}</td>
-      <td class="font-mono text-xs text-neonCyan">${timeSlotStr}</td>
+      <td class="font-mono text-xs text-wood">${timeSlotStr}</td>
       <td>${statusBadge}</td>
       <td class="text-xs text-slate-400 max-w-xs truncate" title="${appt.notes || ''}">${appt.notes || '<span class="italic text-slate-600">None</span>'}</td>
       <td>
@@ -131,6 +133,7 @@ function renderAppointmentsTable() {
 }
 
 // Load stations list into form select dropdown
+// Populate station dropdown filtered by category
 async function loadStationsDropdown() {
   const select = document.getElementById('crud-appt-station-id');
   if (!select) return;
@@ -138,17 +141,113 @@ async function loadStationsDropdown() {
   try {
     const data = await apiFetch('/stations');
     if (data.success) {
-      select.innerHTML = '<option value="">-- Choose Station --</option>';
-      data.stations.forEach(st => {
-        const opt = document.createElement('option');
-        opt.value = st.id;
-        opt.innerText = `${st.name} (${st.type}) - ${st.status}`;
-        select.appendChild(opt);
-      });
+      allStationsCache = data.stations;
+      filterStationDropdown();
     }
   } catch (err) {
     console.error('Failed to load stations for booking form:', err);
   }
+}
+
+function filterStationDropdown() {
+  const select = document.getElementById('crud-appt-station-id');
+  const selectContainer = document.getElementById('crud-appt-station-id-container');
+  const boxesContainer = document.getElementById('crud-appt-station-boxes-container');
+  const boxesDiv = document.getElementById('crud-appt-station-boxes');
+
+  if (!select) return;
+  const existing = select.value;
+
+  select.innerHTML = selectedApptCategory
+    ? '<option value="">-- Choose Station --</option>'
+    : '<option value="">-- Choose a category first --</option>';
+
+  const filteredStations = allStationsCache.filter(st => {
+    if (!selectedApptCategory) return false;
+    const isConsole = ['PS5', 'Xbox', 'PC', 'VR', 'PS4'].includes(st.type);
+    if (selectedApptCategory === 'console' && !isConsole) return false;
+    if (selectedApptCategory === 'pool' && st.type !== 'Pool') return false;
+    if (selectedApptCategory === 'dining' && st.type !== 'Dining') return false;
+    return true;
+  });
+
+  filteredStations.forEach(st => {
+    const opt = document.createElement('option');
+    opt.value = st.id;
+    opt.innerText = `${st.name} (${st.type}) - ${st.status}`;
+    select.appendChild(opt);
+  });
+
+  if (existing) select.value = existing;
+
+  // Visibility and layout management
+  if (selectedApptCategory === 'pool') {
+    // Auto-select the only pool table and hide the menus
+    const poolStation = filteredStations.find(st => st.type === 'Pool');
+    if (poolStation) {
+      select.value = poolStation.id;
+    }
+    if (selectContainer) selectContainer.classList.add('hidden');
+    if (boxesContainer) boxesContainer.classList.add('hidden');
+  } 
+  else if (selectedApptCategory === 'console') {
+    // Show console selection boxes instead of select dropdown
+    if (selectContainer) selectContainer.classList.add('hidden');
+    if (boxesContainer) boxesContainer.classList.remove('hidden');
+
+    if (boxesDiv) {
+      boxesDiv.innerHTML = '';
+      filteredStations.forEach(st => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'appt-console-box bg-kraft border border-slate-700 rounded-lg p-3 text-center hover:border-wood transition duration-300 flex flex-col items-center justify-center gap-1 cursor-pointer w-full';
+        
+        let icon = '🎮';
+        if (st.type === 'PC') icon = '💻';
+        if (st.type === 'VR') icon = '🥽';
+
+        btn.innerHTML = `
+          <span class="text-xl">${icon}</span>
+          <span class="text-xs font-bold text-slate-100">${st.name}</span>
+          <span class="text-[9px] text-slate-400 uppercase tracking-wider">${st.type}</span>
+          <span class="text-[8px] px-1.5 py-0.5 rounded-full ${st.status === 'Available' ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'}">${st.status}</span>
+        `;
+
+        if (select.value == st.id) {
+          btn.classList.remove('border-slate-700');
+          btn.classList.add('border-wood', 'shadow-[0_0_12px_rgba(92,64,51,0.25)]', 'bg-wood/10');
+        }
+
+        btn.onclick = () => {
+          select.value = st.id;
+          document.querySelectorAll('.appt-console-box').forEach(b => {
+            b.classList.remove('border-wood', 'shadow-[0_0_12px_rgba(92,64,51,0.25)]', 'bg-wood/10');
+            b.classList.add('border-slate-700');
+          });
+          btn.classList.remove('border-slate-700');
+          btn.classList.add('border-wood', 'shadow-[0_0_12px_rgba(92,64,51,0.25)]', 'bg-wood/10');
+        };
+
+        boxesDiv.appendChild(btn);
+      });
+    }
+  } 
+  else {
+    // Dining table category - show standard select dropdown
+    if (selectContainer) selectContainer.classList.remove('hidden');
+    if (boxesContainer) boxesContainer.classList.add('hidden');
+  }
+}
+
+function selectApptCategory(category, btn) {
+  selectedApptCategory = category;
+  document.querySelectorAll('.appt-category-btn').forEach(b => {
+    b.classList.remove('border-wood', 'shadow-[0_0_12px_rgba(92,64,51,0.15)]');
+    b.classList.add('border-slate-700');
+  });
+  btn.classList.remove('border-slate-700');
+  btn.classList.add('border-wood', 'shadow-[0_0_12px_rgba(92,64,51,0.15)]');
+  filterStationDropdown();
 }
 
 // Trigger Add Appointment Modal
@@ -160,6 +259,12 @@ function triggerAddAppointment() {
   document.getElementById('crud-appt-player-name').value = '';
   document.getElementById('crud-appt-player-phone').value = '';
   document.getElementById('crud-appt-station-id').value = '';
+  selectedApptCategory = null;
+  document.querySelectorAll('.appt-category-btn').forEach(b => {
+    b.classList.remove('border-wood', 'shadow-[0_0_12px_rgba(92,64,51,0.15)]');
+    b.classList.add('border-slate-700');
+  });
+  filterStationDropdown();
   
   if (window.fpStart) {
     window.fpStart.setDate(new Date());
@@ -226,6 +331,31 @@ function triggerEditAppointment(id) {
   // Show status select dropdown for editing
   document.getElementById('crud-appt-status-group').style.display = 'block';
   document.getElementById('crud-appt-status').value = appt.status;
+
+  // Resolve category from station type
+  const targetStation = allStationsCache.find(st => st.id === appt.station_id);
+  if (targetStation) {
+    let resolvedCategory = 'dining';
+    const isConsole = ['PS5', 'Xbox', 'PC', 'VR', 'PS4'].includes(targetStation.type);
+    if (isConsole) resolvedCategory = 'console';
+    else if (targetStation.type === 'Pool') resolvedCategory = 'pool';
+
+    const btn = document.querySelector(`.appt-category-btn[data-category="${resolvedCategory}"]`);
+    if (btn) {
+      selectApptCategory(resolvedCategory, btn);
+      // Explicitly restore station select value
+      document.getElementById('crud-appt-station-id').value = appt.station_id;
+      // Re-trigger layout filter to update styling on the active box
+      filterStationDropdown();
+    }
+  } else {
+    selectedApptCategory = null;
+    document.querySelectorAll('.appt-category-btn').forEach(b => {
+      b.classList.remove('border-wood', 'shadow-[0_0_12px_rgba(92,64,51,0.15)]');
+      b.classList.add('border-slate-700');
+    });
+    filterStationDropdown();
+  }
 
   openModal('modal-appointment-crud');
 }

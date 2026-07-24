@@ -21,27 +21,102 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 });
 
+let allCategories = [];
+let activeCategoryTab = 'ALL';
+
 async function loadInventory() {
   const grid = document.getElementById('catalog-item-grid');
   if (!grid) return;
   grid.innerHTML = `
     <div class="col-span-full py-12 text-center text-slate-500">
-      <i class="fa-solid fa-spinner fa-spin mr-2 text-2xl text-neonCyan mb-2"></i>
+      <i class="fa-solid fa-spinner fa-spin mr-2 text-2xl text-wood mb-2"></i>
       <p>Loading catalog items...</p>
     </div>
   `;
 
   try {
+    // 1. Fetch categories
+    const categoriesData = await apiFetch('/categories');
+    if (categoriesData.success) {
+      allCategories = categoriesData.categories;
+      populateCategoryDropdown();
+    }
+
+    // 2. Fetch inventory
     const data = await apiFetch('/inventory');
     if (data.success) {
       allInventory = data.inventory;
-      renderCatalog(data.inventory);
+      renderCategoryTabs();
+      // Retain active category selection on reload
+      if (activeCategoryTab === 'ALL') {
+        renderCatalog(data.inventory);
+      } else {
+        filterCatalog(activeCategoryTab);
+      }
     }
   } catch (err) {
     grid.innerHTML = `
-      <div class="col-span-full py-12 text-center text-neonRed font-bold">Failed to load catalog: ${err.message}</div>
+      <div class="col-span-full py-12 text-center text-rust font-bold">Failed to load catalog: ${err.message}</div>
     `;
   }
+}
+
+function renderCategoryTabs() {
+  const container = document.getElementById('catalog-categories-tabs');
+  if (!container) return;
+  container.innerHTML = '';
+
+  // "All" tab
+  const allTab = document.createElement('button');
+  allTab.className = `status-chip px-4 py-1.5 rounded-full text-xs font-cyber transition ${activeCategoryTab === 'ALL' ? 'active bg-wood text-cream border-2 border-wood shadow-sm' : 'bg-kraft border-2 border-slate-800/40 text-slate-400 hover:border-wood hover:text-wood'}`;
+  allTab.innerHTML = `📋 All`;
+  allTab.onclick = () => {
+    activeCategoryTab = 'ALL';
+    renderCategoryTabs();
+    renderCatalog(allInventory);
+  };
+  container.appendChild(allTab);
+
+  // Dynamic category tabs
+  allCategories.forEach(cat => {
+    const tab = document.createElement('button');
+    const isActive = activeCategoryTab === cat.id;
+    tab.className = `status-chip px-4 py-1.5 rounded-full text-xs font-cyber transition ${isActive ? 'active bg-wood text-cream border-2 border-wood shadow-sm' : 'bg-kraft border-2 border-slate-800/40 text-slate-400 hover:border-wood hover:text-wood'}`;
+    tab.innerHTML = `${cat.icon} ${cat.name}`;
+    tab.onclick = () => {
+      activeCategoryTab = cat.id;
+      renderCategoryTabs();
+      filterCatalog(cat.id);
+    };
+    container.appendChild(tab);
+  });
+
+  // "Uncategorized" tab (if any items lack a category)
+  const hasUncategorized = allInventory.some(item => !item.category_id && item.id !== 999 && item.id !== 1000);
+  if (hasUncategorized) {
+    const uncatTab = document.createElement('button');
+    const isActive = activeCategoryTab === 'UNCATEGORIZED';
+    uncatTab.className = `status-chip px-4 py-1.5 rounded-full text-xs font-cyber transition ${isActive ? 'active bg-wood text-cream border-2 border-wood shadow-sm' : 'bg-kraft border-2 border-slate-800/40 text-slate-400 hover:border-wood hover:text-wood'}`;
+    uncatTab.innerHTML = `📦 Uncategorized`;
+    uncatTab.onclick = () => {
+      activeCategoryTab = 'UNCATEGORIZED';
+      renderCategoryTabs();
+      filterCatalog('UNCATEGORIZED');
+    };
+    container.appendChild(uncatTab);
+  }
+}
+
+function populateCategoryDropdown() {
+  const select = document.getElementById('crud-item-category');
+  if (!select) return;
+  select.innerHTML = '';
+  allCategories.forEach(cat => {
+    const opt = document.createElement('option');
+    opt.value = cat.id;
+    opt.innerText = `${cat.icon} ${cat.name}`;
+    select.appendChild(opt);
+  });
 }
 
 function renderCatalog(items) {
@@ -49,44 +124,48 @@ function renderCatalog(items) {
   if (!grid) return;
   grid.innerHTML = '';
 
-  if (items.length === 0) {
+  // Exclude placeholder item console charges (id = 999 and id = 1000) from being rendered in catalog
+  const displayItems = items.filter(item => item.id !== 999 && item.id !== 1000);
+
+  if (displayItems.length === 0) {
     grid.innerHTML = `
       <div class="col-span-full py-12 text-center text-slate-500">No items available in this category.</div>
     `;
     return;
   }
 
-  items.forEach(item => {
+  displayItems.forEach(item => {
     const card = document.createElement('div');
-    card.className = 'catalog-item-card relative';
+    const isOutOfStock = item.stock_qty <= 0;
+    card.className = `catalog-item-card relative ${isOutOfStock ? 'opacity-50' : ''}`;
     
     let isLow = item.stock_qty <= item.low_stock_threshold;
-    let stockClass = isLow ? 'catalog-item-stock low' : 'catalog-item-stock';
-    let icon = item.type === 'Drink' ? '🥤' : item.type === 'Snack' ? '🍜' : item.type === 'Merchandise' ? '👕' : '📦';
+    let stockClass = isOutOfStock ? 'catalog-item-stock text-rust font-bold' : isLow ? 'catalog-item-stock low' : 'catalog-item-stock';
+    let icon = item.category_icon || (item.type === 'Drink' ? '🥤' : item.type === 'Snack' ? '🍜' : item.type === 'Merchandise' ? '👕' : '📦');
 
-    // Highlight low stock
-    let alertBorder = isLow ? 'border-neonRed/30' : '';
+    // Highlight low stock / out of stock
+    let alertBorder = isOutOfStock ? 'border-rust/20' : isLow ? 'border-rust/30' : '';
     if (alertBorder) card.className += ` ${alertBorder}`;
 
     card.innerHTML = `
       <!-- Manager actions overlay -->
       ${window.CURRENT_USER_ROLE !== 'Attendant' ? `
         <div class="absolute top-2 right-2 flex gap-1 z-10">
-          <button onclick="event.stopPropagation(); triggerEditInventory(${item.id})" class="text-[10px] bg-slate-900 border border-slate-700 hover:border-neonCyan p-1 rounded text-slate-300" title="Edit">
+          <button onclick="event.stopPropagation(); triggerEditInventory(${item.id})" class="text-[10px] bg-slate-900 border border-slate-700 hover:border-wood p-1 rounded text-slate-300" title="Edit">
             <i class="fa-solid fa-pen"></i>
           </button>
-          <button onclick="event.stopPropagation(); deleteInventoryItem(${item.id}, '${item.name}')" class="text-[10px] bg-slate-900 border border-slate-700 hover:border-neonPink p-1 rounded text-slate-300" title="Delete">
-            <i class="fa-solid fa-trash-can text-neonRed"></i>
+          <button onclick="event.stopPropagation(); deleteInventoryItem(${item.id}, '${item.name}')" class="text-[10px] bg-slate-900 border border-slate-700 hover:border-clay p-1 rounded text-slate-300" title="Delete">
+            <i class="fa-solid fa-trash-can text-rust"></i>
           </button>
         </div>
       ` : ''}
       <div class="catalog-item-icon">${icon}</div>
       <div class="catalog-item-name text-slate-200" title="${item.name}">${item.name}</div>
       <div class="catalog-item-price">₹${parseFloat(item.price).toFixed(2)}</div>
-      <div class="${stockClass}">Stock: ${item.stock_qty} ${isLow ? '(Low)' : ''}</div>
+      <div class="${stockClass}">${isOutOfStock ? 'Out of Stock' : `Stock: ${item.stock_qty} ${isLow ? '(Low)' : ''}`}</div>
       
-      <button onclick="addToCart(${item.id})" class="btn btn-primary btn-sm w-full mt-3 ${item.stock_qty === 0 ? 'opacity-30 pointer-events-none' : ''}">
-        <i class="fa-solid fa-cart-plus"></i> Add
+      <button onclick="addToCart(${item.id})" class="btn btn-primary btn-sm w-full mt-3 ${isOutOfStock ? 'opacity-30 pointer-events-none' : ''}" ${isOutOfStock ? 'disabled' : ''}>
+        <i class="fa-solid fa-cart-plus"></i> ${isOutOfStock ? 'Out of Stock' : 'Add'}
       </button>
     `;
 
@@ -94,11 +173,14 @@ function renderCatalog(items) {
   });
 }
 
-function filterCatalog(category) {
-  if (category === 'ALL') {
+function filterCatalog(categoryId) {
+  if (categoryId === 'ALL') {
     renderCatalog(allInventory);
+  } else if (categoryId === 'UNCATEGORIZED') {
+    const filtered = allInventory.filter(item => !item.category_id);
+    renderCatalog(filtered);
   } else {
-    const filtered = allInventory.filter(item => item.type === category);
+    const filtered = allInventory.filter(item => item.category_id === categoryId);
     renderCatalog(filtered);
   }
 }
@@ -143,16 +225,20 @@ async function loadPOSPlayersDropdown() {
     const data = await apiFetch('/players');
     if (data.success) {
       data.players.forEach(player => {
-        if (!player.is_blacklisted && player.wallet_balance > 0) {
+        if (!player.is_blacklisted && player.play_hours > 0) {
           const opt = document.createElement('option');
           opt.value = player.id;
-          opt.innerText = `${player.name} (Wallet: ₹${parseFloat(player.wallet_balance).toFixed(2)})`;
+          opt.innerText = `${player.name} (Play Hours: ${parseFloat(player.play_hours).toFixed(2)} Hrs)`;
           select.appendChild(opt);
         }
       });
+      // Initialize premium selection slider (guest not allowed for Play Hours billing)
+      if (typeof initMemberSlider === 'function') {
+        initMemberSlider('checkout-player-id', 'id', false);
+      }
     }
   } catch (err) {
-    console.error('Failed to load players for wallet:', err);
+    console.error('Failed to load players for play hours:', err);
   }
 }
 
@@ -230,7 +316,7 @@ function updateCartView() {
     row.innerHTML = `
       <div class="flex-grow pr-3">
         <div class="font-bold text-slate-200 text-xs">${item.name}</div>
-        <div class="text-[10px] text-neonCyan">₹${item.price.toFixed(2)} each</div>
+        <div class="text-[10px] text-wood">₹${item.price.toFixed(2)} each</div>
       </div>
       <div class="flex items-center gap-2">
         <button type="button" onclick="updateCartQuantity(${item.itemId}, -1)" class="w-6 h-6 flex items-center justify-center bg-slate-850 rounded hover:bg-slate-700 text-slate-300">-</button>
@@ -257,7 +343,7 @@ function updatePricingSummary(subtotal) {
 function toggleCheckoutTarget(type) {
   const stationGroup = document.getElementById('checkout-station-group');
   const paymentGroup = document.getElementById('checkout-payment-group');
-  const walletGroup = document.getElementById('checkout-wallet-player-group');
+  const walletGroup = document.getElementById('checkout-play-hours-player-group');
 
   if (type === 'SessionBill') {
     stationGroup.style.display = 'block';
@@ -272,8 +358,8 @@ function toggleCheckoutTarget(type) {
 }
 
 function togglePOSWalletInput(method) {
-  const walletGroup = document.getElementById('checkout-wallet-player-group');
-  if (method === 'Wallet') {
+  const walletGroup = document.getElementById('checkout-play-hours-player-group');
+  if (method === 'PlayHours') {
     walletGroup.style.display = 'block';
     loadPOSPlayersDropdown();
   } else {
@@ -298,8 +384,8 @@ document.getElementById('form-pos-checkout').addEventListener('submit', async (e
     return;
   }
 
-  if (saleType === 'Direct' && paymentMethod === 'Wallet' && !playerId) {
-    showToast('Please select wallet account', 'warning');
+  if (saleType === 'Direct' && paymentMethod === 'PlayHours' && !playerId) {
+    showToast('Please select play hours account', 'warning');
     return;
   }
 
@@ -335,6 +421,10 @@ function triggerAddInventory() {
   document.getElementById('inventory-modal-title').innerText = 'Add Inventory Item';
 
   document.getElementById('crud-item-name').value = '';
+  populateCategoryDropdown();
+  if (allCategories.length > 0) {
+    document.getElementById('crud-item-category').value = allCategories[0].id;
+  }
   document.getElementById('crud-item-type').value = 'Drink';
   document.getElementById('crud-item-price').value = '2.00';
   document.getElementById('crud-item-stock').value = '20';
@@ -350,6 +440,10 @@ async function triggerEditInventory(id) {
     document.getElementById('inventory-modal-title').innerText = `Edit Item: ${item.name}`;
 
     document.getElementById('crud-item-name').value = item.name;
+    populateCategoryDropdown();
+    if (item.category_id) {
+      document.getElementById('crud-item-category').value = item.category_id;
+    }
     document.getElementById('crud-item-type').value = item.type;
     document.getElementById('crud-item-price').value = parseFloat(item.price).toFixed(2);
     document.getElementById('crud-item-stock').value = item.stock_qty;
@@ -363,10 +457,24 @@ document.getElementById('form-inventory-crud').addEventListener('submit', async 
   e.preventDefault();
   const id = document.getElementById('crud-item-id').value;
   const name = document.getElementById('crud-item-name').value.trim();
-  const type = document.getElementById('crud-item-type').value;
+  const category_id = parseInt(document.getElementById('crud-item-category').value) || null;
   const price = parseFloat(document.getElementById('crud-item-price').value);
   const stock_qty = parseInt(document.getElementById('crud-item-stock').value);
   const low_stock_threshold = parseInt(document.getElementById('crud-item-threshold').value);
+
+  // Set type dynamically for backwards compatibility (reports)
+  let legacyType = 'Other';
+  const selectedCat = allCategories.find(c => c.id === category_id);
+  if (selectedCat) {
+    const catName = selectedCat.name.toLowerCase();
+    if (catName.includes('snack') || catName.includes('meal') || catName.includes('food')) {
+      legacyType = 'Snack';
+    } else if (catName.includes('beverage') || catName.includes('drink') || catName.includes('coffee') || catName.includes('tea')) {
+      legacyType = 'Drink';
+    } else if (catName.includes('merch')) {
+      legacyType = 'Merchandise';
+    }
+  }
 
   const endpoint = id ? `/inventory/${id}` : '/inventory';
   const method = id ? 'PUT' : 'POST';
@@ -376,10 +484,11 @@ document.getElementById('form-inventory-crud').addEventListener('submit', async 
       method,
       body: JSON.stringify({
         name,
-        type,
+        type: legacyType,
         price,
         stock_qty,
-        low_stock_threshold
+        low_stock_threshold,
+        category_id
       })
     });
 
@@ -401,4 +510,168 @@ function deleteInventoryItem(id, name) {
       showToast(err.message, 'error');
     }
   });
+}
+
+// Category Manager functions
+function openCategoryManager() {
+  renderManageCategoriesList();
+  openModal('modal-categories-management');
+}
+
+function renderManageCategoriesList() {
+  const container = document.getElementById('categories-manage-list');
+  if (!container) return;
+  container.innerHTML = '';
+
+  if (allCategories.length === 0) {
+    container.innerHTML = '<p class="text-center text-xs text-slate-500 py-4">No categories created yet.</p>';
+    return;
+  }
+
+  allCategories.forEach((cat, idx) => {
+    const row = document.createElement('div');
+    row.className = 'flex justify-between items-center bg-kraft border border-slate-700/60 p-2 rounded text-sm mb-1.5';
+    row.innerHTML = `
+      <div class="flex items-center gap-2">
+        <span onclick="editCategoryIcon(${cat.id}, '${cat.icon}')" class="cursor-pointer text-base bg-slate-900 px-2 py-0.5 rounded border border-slate-700 hover:border-wood" title="Click to edit emoji">${cat.icon}</span>
+        <span onclick="editCategoryName(${cat.id}, '${cat.name}')" class="font-bold text-slate-200 cursor-pointer hover:underline" title="Click to edit name">${cat.name}</span>
+      </div>
+      <div class="flex items-center gap-1.5">
+        <!-- Reorder buttons -->
+        <button onclick="moveCategory(${cat.id}, 'up')" class="text-slate-400 hover:text-wood px-1" ${idx === 0 ? 'disabled style="opacity: 0.3;"' : ''}><i class="fa-solid fa-chevron-up"></i></button>
+        <button onclick="moveCategory(${cat.id}, 'down')" class="text-slate-400 hover:text-wood px-1" ${idx === allCategories.length - 1 ? 'disabled style="opacity: 0.3;"' : ''}><i class="fa-solid fa-chevron-down"></i></button>
+        <!-- Delete button -->
+        <button onclick="deleteCategory(${cat.id}, '${cat.name}')" class="text-rust hover:text-red-400 px-1 ml-2"><i class="fa-solid fa-trash-can"></i></button>
+      </div>
+    `;
+    container.appendChild(row);
+  });
+}
+
+// Add category form submit
+document.getElementById('form-category-add').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const name = document.getElementById('cat-add-name').value.trim();
+  const icon = document.getElementById('cat-add-icon').value.trim();
+  const display_order = allCategories.length + 1;
+
+  try {
+    const res = await apiFetch('/categories', {
+      method: 'POST',
+      body: JSON.stringify({ name, icon, display_order })
+    });
+    if (res.success) {
+      showToast('Category created successfully!', 'success');
+      document.getElementById('cat-add-name').value = '';
+      document.getElementById('cat-add-icon').value = '🍿';
+      await loadInventory();
+      renderManageCategoriesList();
+    }
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+});
+
+// Edit Category Name
+async function editCategoryName(id, currentName) {
+  const newName = prompt('Enter new category name:', currentName);
+  if (!newName || newName.trim() === '' || newName.trim() === currentName) return;
+
+  const cat = allCategories.find(c => c.id === id);
+  try {
+    const res = await apiFetch(`/categories/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        name: newName.trim(),
+        icon: cat.icon,
+        display_order: cat.display_order,
+        is_active: cat.is_active
+      })
+    });
+    if (res.success) {
+      showToast('Category name updated!', 'success');
+      await loadInventory();
+      renderManageCategoriesList();
+    }
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+// Edit Category Icon
+async function editCategoryIcon(id, currentIcon) {
+  const newIcon = prompt('Enter new emoji icon for this category:', currentIcon);
+  if (!newIcon || newIcon.trim() === '' || newIcon.trim() === currentIcon) return;
+
+  const cat = allCategories.find(c => c.id === id);
+  try {
+    const res = await apiFetch(`/categories/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        name: cat.name,
+        icon: newIcon.trim(),
+        display_order: cat.display_order,
+        is_active: cat.is_active
+      })
+    });
+    if (res.success) {
+      showToast('Category icon updated!', 'success');
+      await loadInventory();
+      renderManageCategoriesList();
+    }
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+// Delete Category
+function deleteCategory(id, name) {
+  showConfirm('Delete Category', `Are you sure you want to delete "${name}"? Linked items will become Uncategorized.`, async () => {
+    try {
+      const res = await apiFetch(`/categories/${id}`, { method: 'DELETE' });
+      if (res.success) {
+        showToast(`Category "${name}" deleted successfully!`, 'success');
+        activeCategoryTab = 'ALL';
+        await loadInventory();
+        renderManageCategoriesList();
+      }
+    } catch (err) {
+      showToast(err.message, 'error');
+    }
+  });
+}
+
+// Move category display order Up or Down
+async function moveCategory(id, direction) {
+  const idx = allCategories.findIndex(c => c.id === id);
+  if (idx === -1) return;
+
+  let targetIdx = direction === 'up' ? idx - 1 : idx + 1;
+  if (targetIdx < 0 || targetIdx >= allCategories.length) return;
+
+  const currentCat = allCategories[idx];
+  const targetCat = allCategories[targetIdx];
+
+  const currentOrder = currentCat.display_order;
+  currentCat.display_order = targetCat.display_order;
+  targetCat.display_order = currentOrder;
+
+  const orderPayload = [
+    { id: currentCat.id, display_order: currentCat.display_order },
+    { id: targetCat.id, display_order: targetCat.display_order }
+  ];
+
+  try {
+    const res = await apiFetch('/categories/reorder', {
+      method: 'PUT',
+      body: JSON.stringify({ order: orderPayload })
+    });
+    if (res.success) {
+      showToast('Reordered!', 'success');
+      await loadInventory();
+      renderManageCategoriesList();
+    }
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
 }

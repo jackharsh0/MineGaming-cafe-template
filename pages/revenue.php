@@ -8,52 +8,52 @@ include 'header.php';
     <!-- Daily Revenue Card -->
     <div class="widget-card cyan">
       <div class="widget-title flex items-center gap-2">
-        <i class="fa-solid fa-calendar-day text-neonCyan"></i>
+        <i class="fa-solid fa-calendar-day text-wood"></i>
         <span>Daily Revenue</span>
       </div>
-      <div class="widget-value text-neonCyan" id="revenue-daily">₹0.00</div>
+      <div class="widget-value text-wood" id="revenue-daily">₹0.00</div>
       <div class="text-[10px] text-slate-500 mt-2 font-cyber tracking-wider">COMPLETED TODAY</div>
     </div>
 
     <!-- Weekly Revenue Card -->
     <div class="widget-card pink">
       <div class="widget-title flex items-center gap-2">
-        <i class="fa-solid fa-calendar-week text-neonPink"></i>
+        <i class="fa-solid fa-calendar-week text-clay"></i>
         <span>Weekly Revenue</span>
       </div>
-      <div class="widget-value text-neonPink" id="revenue-weekly">₹0.00</div>
+      <div class="widget-value text-clay" id="revenue-weekly">₹0.00</div>
       <div class="text-[10px] text-slate-500 mt-2 font-cyber tracking-wider">LAST 7 DAYS TOTAL</div>
     </div>
 
     <!-- Monthly Revenue Card -->
     <div class="widget-card gold">
       <div class="widget-title flex items-center gap-2">
-        <i class="fa-solid fa-calendar-days text-neonGold"></i>
+        <i class="fa-solid fa-calendar-days text-brass"></i>
         <span>Monthly Revenue</span>
       </div>
-      <div class="widget-value text-neonGold" id="revenue-monthly">₹0.00</div>
+      <div class="widget-value text-brass" id="revenue-monthly">₹0.00</div>
       <div class="text-[10px] text-slate-500 mt-2 font-cyber tracking-wider">LAST 30 DAYS TOTAL</div>
     </div>
   </div>
 
   <!-- Chart and Graphs Row -->
-  <div class="bg-cyberPanel border border-slate-800 rounded-lg p-6">
+  <div class="bg-parchment border border-slate-800 rounded-lg p-6">
     <div class="section-header flex justify-between items-center mb-4 border-b border-slate-800 pb-4">
-      <h3 class="text-lg font-bold text-neonCyan flex items-center gap-2">
+      <h3 class="text-lg font-bold text-wood flex items-center gap-2">
         <i class="fa-solid fa-chart-line"></i>
         <span>14-Day Revenue Trend</span>
       </h3>
       <div class="text-xs text-slate-400 font-cyber">SESSION & CAFE SALES COMBINED</div>
     </div>
-    <div class="relative w-full h-[320px] bg-cyberDark/50 rounded-lg p-4 border border-slate-900">
+    <div class="relative w-full h-[320px] bg-cream/50 rounded-lg p-4 border border-slate-900">
       <canvas id="revenueTrendChart" class="w-full h-full"></canvas>
     </div>
   </div>
 
   <!-- Detailed Payments Transactions Table -->
-  <div class="bg-cyberPanel border border-slate-800 rounded-lg p-6">
+  <div class="bg-parchment border border-slate-800 rounded-lg p-6">
     <div class="section-header flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6 border-b border-slate-800 pb-4">
-      <h3 class="text-lg font-bold text-neonGreen flex items-center gap-2">
+      <h3 class="text-lg font-bold text-forest flex items-center gap-2">
         <i class="fa-solid fa-receipt"></i>
         <span>Recent Transactions History</span>
       </h3>
@@ -78,7 +78,7 @@ include 'header.php';
           <option value="All">All Methods</option>
           <option value="Cash">Cash</option>
           <option value="Card">Card</option>
-          <option value="Wallet">Wallet</option>
+          <option value="PlayHours">Play Hours</option>
           <option value="Split">Split</option>
         </select>
       </div>
@@ -87,7 +87,7 @@ include 'header.php';
     <!-- Table content -->
     <div class="table-responsive max-h-[500px] overflow-y-auto scrollbar-thin">
       <table class="cyber-table">
-        <thead class="sticky top-0 bg-cyberPanel z-10">
+        <thead class="sticky top-0 bg-parchment z-10">
           <tr>
             <th>Timestamp</th>
             <th>Type</th>
@@ -109,14 +109,14 @@ include 'header.php';
 </div>
 
 <!-- Receipt Details Modal -->
-<div id="modal-receipt-view" class="modal-overlay">
+<div id="modal-receipt-view" class="modal-overlay" role="dialog" aria-modal="true">
   <div class="modal-container max-w-md">
     <div class="modal-header border-b border-slate-800">
-      <h3 class="modal-title text-neonCyan font-cyber flex items-center gap-2">
+      <h3 class="modal-title text-wood font-cyber flex items-center gap-2">
         <i class="fa-solid fa-receipt"></i>
         <span>Transaction Receipt</span>
       </h3>
-      <button class="btn-modal-close text-slate-400 hover:text-neonPink transition" onclick="closeModal('modal-receipt-view')">&times;</button>
+      <button class="btn-modal-close text-slate-400 hover:text-clay transition" onclick="closeModal('modal-receipt-view')">&times;</button>
     </div>
     <div class="modal-body space-y-4 max-h-[60vh] overflow-y-auto" id="receipt-modal-content">
       <!-- Populated dynamically via JS -->

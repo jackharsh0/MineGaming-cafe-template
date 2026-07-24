@@ -38,9 +38,10 @@ router.post('/backup', verifyToken, requireRole(['SuperAdmin']), async (req, res
     sqlDump += `CREATE DATABASE IF NOT EXISTS \`gaming_zone\`;\nUSE \`gaming_zone\`;\n\n`;
 
     const tables = [
-      'users_admin', 'stations', 'players', 'pricing_rules', 
-      'game_sessions', 'inventory', 'pos_sales', 
-      'pos_sale_items', 'shift_logs', 'audit_logs', 'coupons'
+      'users_admin', 'stations', 'players', 'pricing_rules',
+      'game_sessions', 'inventory', 'pos_sales',
+      'pos_sale_items', 'shift_logs', 'audit_logs', 'coupons',
+      'appointments', 'categories', 'whatsapp_queue', 'system_settings'
     ];
 
     for (const table of tables) {
@@ -94,7 +95,7 @@ router.post('/backup', verifyToken, requireRole(['SuperAdmin']), async (req, res
 
   } catch (err) {
     console.error('Backup creation failed:', err);
-    res.status(500).json({ success: false, message: 'Backup failed: ' + err.message });
+    res.status(500).json({ success: false, message: 'Backup failed' });
   }
 });
 

@@ -7,10 +7,10 @@
 <!-- Core JavaScript Configurations -->
 <script>
   <?php require_once __DIR__ . '/../config.php'; ?>
-  window.BACKEND_URL = '<?php echo BACKEND_URL; ?>/api';
-  window.JWT_TOKEN = '<?php echo isset($_SESSION["jwt_token"]) ? $_SESSION["jwt_token"] : ""; ?>';
-  window.CURRENT_USER_ID = '<?php echo isset($_SESSION["user_id"]) ? $_SESSION["user_id"] : ""; ?>';
-  window.CURRENT_USER_ROLE = '<?php echo isset($_SESSION["role"]) ? $_SESSION["role"] : ""; ?>';
+  window.BACKEND_URL = <?php echo json_encode(BACKEND_URL . '/api'); ?>;
+  window.JWT_TOKEN = <?php echo json_encode(isset($_SESSION["jwt_token"]) ? $_SESSION["jwt_token"] : ""); ?>;
+  window.CURRENT_USER_ID = <?php echo json_encode(isset($_SESSION["user_id"]) ? $_SESSION["user_id"] : ""); ?>;
+  window.CURRENT_USER_ROLE = <?php echo json_encode(isset($_SESSION["role"]) ? $_SESSION["role"] : ""); ?>;
 </script>
 
 <script src="../js/app.js"></script>
@@ -33,6 +33,9 @@ switch ($current_page) {
     case 'stations.php':
         echo '<script src="../js/stations.js"></script>';
         break;
+    case 'food_tables.php':
+        // app.js already loaded globally above
+        break;
     case 'players.php':
         echo '<script src="../js/players.js"></script>';
         break;
@@ -52,14 +55,19 @@ switch ($current_page) {
         echo '<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>';
         echo '<script src="../js/revenue.js"></script>';
         break;
+    case 'whatsapp.php':
+        echo '<script src="../js/sse.js"></script>';
+        break;
+    case 'settings.php':
+        break; // settings-page.js loaded inline in settings.php
 }
 ?>
 
 <!-- Custom Reusable Confirmation Modal -->
-<div id="modal-confirm-action" class="modal-overlay">
+<div id="modal-confirm-action" class="modal-overlay" role="dialog" aria-modal="true">
   <div class="modal-container max-w-sm">
     <div class="modal-header">
-      <h3 class="modal-title text-neonRed font-cyber uppercase" id="confirm-modal-title">Confirm Action</h3>
+      <h3 class="modal-title text-rust font-cyber uppercase" id="confirm-modal-title">Confirm Action</h3>
       <button class="btn-modal-close" onclick="closeModal('modal-confirm-action')">&times;</button>
     </div>
     <div class="modal-body">

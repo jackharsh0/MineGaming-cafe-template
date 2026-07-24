@@ -1,7 +1,7 @@
 // Real-time Event Stream Listener using Server-Sent Events (SSE)
 
 function initRealtimeStream() {
-  const eventSource = new EventSource(`${window.BACKEND_URL}/realtime/stream`);
+  const eventSource = new EventSource(`${window.BACKEND_URL}/realtime/stream`, { withCredentials: true });
 
   eventSource.onmessage = (event) => {
     try {
@@ -24,9 +24,16 @@ function initRealtimeStream() {
         case 'activity_feed':
           addActivityItem(data);
           break;
+        case 'new_quick_order':
+          console.log('[SSE New Quick Order]', data);
+          showToast(`🍔 Order from ${data.location}: ${data.itemsSummary}`, 'success');
+          if (window.SoundEffects) {
+            window.SoundEffects.playNewAppointment();
+          }
+          break;
         case 'timer_ended':
           console.log('[SSE Timer Ended]', data);
-          showToast(`Terminal timer ended for session #${data.sessionId} (${data.playerName}) on ${data.stationName}`, 'warning');
+          showToast(`Timer ended for session #${data.sessionId} (${data.playerName}) on ${data.stationName}`, 'warning');
           if (window.SoundEffects) {
             window.SoundEffects.playTimerEnded();
           }
@@ -38,6 +45,14 @@ function initRealtimeStream() {
             window.SoundEffects.playNewAppointment();
           }
           window.dispatchEvent(new CustomEvent('appointmentCreated', { detail: data }));
+          break;
+        case 'whatsapp_status':
+          console.log('[SSE WhatsApp Status]', data);
+          window.dispatchEvent(new CustomEvent('whatsappStatusChanged', { detail: data }));
+          break;
+        case 'whatsapp_message':
+          console.log('[SSE WhatsApp Message]', data);
+          window.dispatchEvent(new CustomEvent('whatsappMessageReceived', { detail: data }));
           break;
       }
     } catch (err) {
@@ -62,7 +77,7 @@ function addActivityItem(activity) {
 
   item.innerHTML = `
     <div class="activity-time">${timeStr}</div>
-    <div class="activity-action text-neonPink">${activity.action}</div>
+    <div class="activity-action text-clay">${activity.action}</div>
     <div class="activity-desc">${activity.details}</div>
   `;
 

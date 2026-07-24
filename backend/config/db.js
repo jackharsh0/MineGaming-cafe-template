@@ -11,7 +11,30 @@ const pool = mysql.createPool({
   database: process.env.DB_NAME || 'gaming_zone',
   waitForConnections: true,
   connectionLimit: 25,
-  queueLimit: 0
+  queueLimit: 0,
+  connectTimeout: 10000,
+  acquireTimeout: 10000,
+  timeout: 60000
 });
+
+let dbClockOffsetMs = 0;
+
+// Sync offset on boot
+pool.query('SELECT CURRENT_TIMESTAMP() as db_time')
+  .then(([rows]) => {
+    if (rows.length > 0) {
+      const dbTime = new Date(rows[0].db_time);
+      const nodeTime = new Date();
+      dbClockOffsetMs = dbTime - nodeTime;
+      console.log(`[Time Sync] Database clock offset is ${dbClockOffsetMs} ms`);
+    }
+  })
+  .catch(err => {
+    console.error('Failed to sync database clock:', err);
+  });
+
+pool.getDbNow = function() {
+  return new Date(Date.now() + dbClockOffsetMs);
+};
 
 module.exports = pool;

@@ -7,7 +7,12 @@ const { logAudit } = require('../utils/helper');
 // Get all inventory
 router.get('/', verifyToken, async (req, res) => {
   try {
-    const [rows] = await pool.query('SELECT * FROM inventory ORDER BY name');
+    const [rows] = await pool.query(`
+      SELECT i.*, c.name AS category_name, c.icon AS category_icon 
+      FROM inventory i 
+      LEFT JOIN categories c ON i.category_id = c.id 
+      ORDER BY i.name
+    `);
     res.json({ success: true, inventory: rows });
   } catch (err) {
     console.error(err);
@@ -18,7 +23,12 @@ router.get('/', verifyToken, async (req, res) => {
 // Get items low in stock
 router.get('/low-stock', verifyToken, async (req, res) => {
   try {
-    const [rows] = await pool.query('SELECT * FROM inventory WHERE stock_qty <= low_stock_threshold');
+    const [rows] = await pool.query(`
+      SELECT i.*, c.name AS category_name, c.icon AS category_icon 
+      FROM inventory i 
+      LEFT JOIN categories c ON i.category_id = c.id 
+      WHERE i.stock_qty <= i.low_stock_threshold
+    `);
     res.json({ success: true, items: rows });
   } catch (err) {
     console.error(err);
@@ -28,18 +38,18 @@ router.get('/low-stock', verifyToken, async (req, res) => {
 
 // Add inventory item (Admin/Manager only)
 router.post('/', verifyToken, requireRole(['SuperAdmin', 'Manager']), async (req, res) => {
-  const { name, type, price, stock_qty, low_stock_threshold } = req.body;
+  const { name, type, price, stock_qty, low_stock_threshold, category_id } = req.body;
   if (!name || !type || price === undefined || stock_qty === undefined) {
     return res.status(400).json({ success: false, message: 'Missing required fields' });
   }
 
   try {
     const [result] = await pool.query(
-      'INSERT INTO inventory (name, type, price, stock_qty, low_stock_threshold) VALUES (?, ?, ?, ?, ?)',
-      [name, type, price, stock_qty, low_stock_threshold || 10]
+      'INSERT INTO inventory (name, type, price, stock_qty, low_stock_threshold, category_id) VALUES (?, ?, ?, ?, ?, ?)',
+      [name, type, price, stock_qty, low_stock_threshold || 10, category_id || null]
     );
 
-    await logAudit(req.user.id, 'Inventory Add', `Added item ${name} ($${price}, Qty: ${stock_qty})`);
+    await logAudit(req.user.id, 'Inventory Add', `Added item ${name} (₹${price}, Qty: ${stock_qty})`);
     res.json({ success: true, message: 'Inventory item added successfully', itemId: result.insertId });
   } catch (err) {
     console.error(err);
@@ -50,15 +60,15 @@ router.post('/', verifyToken, requireRole(['SuperAdmin', 'Manager']), async (req
 // Update stock quantity / details
 router.put('/:id', verifyToken, requireRole(['SuperAdmin', 'Manager']), async (req, res) => {
   const { id } = req.params;
-  const { name, type, price, stock_qty, low_stock_threshold } = req.body;
+  const { name, type, price, stock_qty, low_stock_threshold, category_id } = req.body;
 
   try {
     await pool.query(
-      'UPDATE inventory SET name = ?, type = ?, price = ?, stock_qty = ?, low_stock_threshold = ? WHERE id = ?',
-      [name, type, price, stock_qty, low_stock_threshold, id]
+      'UPDATE inventory SET name = ?, type = ?, price = ?, stock_qty = ?, low_stock_threshold = ?, category_id = ? WHERE id = ?',
+      [name, type, price, stock_qty, low_stock_threshold, category_id || null, id]
     );
 
-    await logAudit(req.user.id, 'Inventory Edit', `Updated item ID: ${id} to ${name} ($${price}, Qty: ${stock_qty})`);
+    await logAudit(req.user.id, 'Inventory Edit', `Updated item ID: ${id} to ${name} (₹${price}, Qty: ${stock_qty})`);
     res.json({ success: true, message: 'Inventory item updated successfully' });
   } catch (err) {
     console.error(err);

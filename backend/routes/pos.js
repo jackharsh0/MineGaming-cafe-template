@@ -3,16 +3,38 @@ const router = express.Router();
 const pool = require('../config/db');
 const { verifyToken } = require('../middleware/auth');
 const { logAudit, getSystemSetting } = require('../utils/helper');
+const { broadcast } = require('./realtime');
+const { validateBody, z } = require('../middleware/validate');
+
+const posCheckoutSchema = z.object({
+  sessionId: z.number().int().nullable().optional(),
+  playerId: z.number().int().nullable().optional(),
+  saleType: z.enum(['Direct', 'SessionBill']),
+  items: z.array(z.object({
+    itemId: z.number().int(),
+    quantity: z.number().int().positive('Quantity must be greater than zero')
+  })).min(1, 'No items in the order'),
+  paymentMethod: z.enum(['Cash', 'PlayHours', 'Card', 'Split']).optional().default('Cash'),
+  couponCode: z.string().trim().nullable().optional(),
+  paymentIntentId: z.string().trim().nullable().optional(),
+  transactionId: z.string().trim().nullable().optional()
+});
 
 // Get items ordered for a session
 router.get('/session/:sessionId', verifyToken, async (req, res) => {
   const { sessionId } = req.params;
   try {
     const [rows] = await pool.query(
-      `SELECT psi.*, i.name AS item_name, i.type AS item_type 
+      `SELECT psi.*, IFNULL(i.name, 'Terminal Session Charge') AS item_name, IFNULL(i.type, 'Terminal') AS item_type,
+              gs.start_time AS terminal_start_time, gs.end_time AS terminal_end_time,
+              gs.target_end_time AS terminal_target_end_time, gs.hourly_rate AS terminal_hourly_rate,
+              gs.station_id AS terminal_station_id, gs.payment_method AS terminal_payment_method,
+              st.name AS terminal_station_name
        FROM pos_sale_items psi
        JOIN pos_sales ps ON psi.sale_id = ps.id
-       JOIN inventory i ON psi.item_id = i.id
+       LEFT JOIN inventory i ON psi.item_id = i.id
+       LEFT JOIN game_sessions gs ON ps.merged_from_session_id = gs.id
+       LEFT JOIN stations st ON gs.station_id = st.id
        WHERE ps.session_id = ? AND ps.status = 'Pending'`,
       [sessionId]
     );
@@ -24,12 +46,26 @@ router.get('/session/:sessionId', verifyToken, async (req, res) => {
 });
 
 // Process POS Sale (Direct or Session-Bill)
-router.post('/checkout', verifyToken, async (req, res) => {
-  const { sessionId, playerId, saleType, items, paymentMethod, couponCode } = req.body;
-  // items: Array of { itemId, quantity }
+router.post('/checkout', verifyToken, validateBody(posCheckoutSchema), async (req, res) => {
+  const { sessionId, playerId, saleType, items, paymentMethod, couponCode, paymentIntentId, transactionId } = req.body;
 
-  if (!items || !Array.isArray(items) || items.length === 0) {
-    return res.status(400).json({ success: false, message: 'No items in the order' });
+  // Idempotency check:
+  if (transactionId) {
+    try {
+      const [existingSale] = await pool.query(
+        'SELECT id FROM pos_sales WHERE transaction_id = ?',
+        [transactionId]
+      );
+      if (existingSale.length > 0) {
+        return res.json({
+          success: true,
+          saleId: existingSale[0].id,
+          message: 'POS sale already processed (idempotent)'
+        });
+      }
+    } catch (dbErr) {
+      console.error('Idempotency check failed:', dbErr);
+    }
   }
 
   const conn = await pool.getConnection();
@@ -66,6 +102,7 @@ router.post('/checkout', verifyToken, async (req, res) => {
 
       saleItemsToInsert.push({
         itemId: item.itemId,
+        name: invItem.name,
         quantity: item.quantity,
         unitPrice,
         totalPrice
@@ -97,32 +134,34 @@ router.post('/checkout', verifyToken, async (req, res) => {
 
     const status = saleType === 'SessionBill' ? 'Pending' : 'Paid';
 
-    // Wallet transaction check for direct wallet purchases
-    if (saleType === 'Direct' && paymentMethod === 'Wallet' && playerId) {
+    let hoursToDeduct = 0.00;
+    // PlayHours transaction check for direct play hours purchases
+    if (saleType === 'Direct' && paymentMethod === 'PlayHours' && playerId) {
       const [players] = await conn.query(
-        'SELECT name, wallet_balance FROM players WHERE id = ? FOR UPDATE',
+        'SELECT name, play_hours FROM players WHERE id = ? FOR UPDATE',
         [playerId]
       );
       if (players.length === 0) {
         throw new Error('Player not found');
       }
       const player = players[0];
-      if (parseFloat(player.wallet_balance) < total) {
-        throw new Error(`Insufficient wallet balance. Available: $${player.wallet_balance}, Needed: $${total}`);
+      hoursToDeduct = parseFloat((total / 5.00).toFixed(2));
+      if (parseFloat(player.play_hours) < hoursToDeduct) {
+        throw new Error(`Insufficient play hours. Available: ${player.play_hours} Hours, Needed: ${hoursToDeduct} Hours`);
       }
       
-      // Deduct from wallet
+      // Deduct from play hours
       await conn.query(
-        'UPDATE players SET wallet_balance = wallet_balance - ? WHERE id = ?',
-        [total, playerId]
+        'UPDATE players SET play_hours = play_hours - ? WHERE id = ?',
+        [hoursToDeduct, playerId]
       );
     }
 
     // 2. Insert POS sale record
     const [saleResult] = await conn.query(
       `INSERT INTO pos_sales 
-       (session_id, player_id, sale_type, subtotal, tax, discount, total, payment_method, status, created_by)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       (session_id, player_id, sale_type, subtotal, tax, discount, total, payment_method, play_hours_amount, status, created_by, payment_intent_id, transaction_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         saleType === 'SessionBill' ? sessionId : null,
         playerId || null,
@@ -132,8 +171,11 @@ router.post('/checkout', verifyToken, async (req, res) => {
         discount,
         total,
         paymentMethod || 'Cash',
+        hoursToDeduct,
         status,
-        req.user.id
+        req.user.id,
+        paymentIntentId || null,
+        transactionId || null
       ]
     );
 
@@ -152,9 +194,44 @@ router.post('/checkout', verifyToken, async (req, res) => {
 
     let auditMsg = '';
     if (saleType === 'SessionBill') {
-      auditMsg = `Added Cafe items to Session ID: ${sessionId} (Subtotal: $${subtotal.toFixed(2)})`;
+      auditMsg = `Added Cafe items to Session ID: ${sessionId} (Subtotal: ₹${subtotal.toFixed(2)})`;
     } else {
-      auditMsg = `Completed direct POS sale ID: ${saleId} (Total: $${total.toFixed(2)}) via ${paymentMethod}`;
+      auditMsg = `Completed direct POS sale ID: ${saleId} (Total: ₹${total.toFixed(2)}) via ${paymentMethod}`;
+
+      // Send WhatsApp receipt for Direct sales asynchronously
+      if (playerId) {
+        try {
+          const [settingsRows] = await pool.query("SELECT setting_value FROM system_settings WHERE setting_key = 'whatsapp_enabled'");
+          const whatsappEnabled = settingsRows.length > 0 ? settingsRows[0].setting_value === '1' : false;
+          if (whatsappEnabled) {
+            const [playerRows] = await pool.query("SELECT name, phone FROM players WHERE id = ?", [playerId]);
+            if (playerRows.length > 0 && playerRows[0].phone && playerRows[0].phone.trim()) {
+              const player = playerRows[0];
+              const invoiceItems = saleItemsToInsert.map(item => ({
+                name: item.name,
+                quantity: item.quantity,
+                totalPrice: item.totalPrice
+              }));
+              
+              const { sendWhatsAppInvoice } = require('../utils/whatsapp');
+              sendWhatsAppInvoice(player.phone.trim(), {
+                receiptId: `POS-${saleId}`,
+                customerName: player.name,
+                subtotal,
+                discount,
+                tax,
+                taxRate: taxPercent,
+                total,
+                items: invoiceItems
+              }).catch(e => {
+                console.error('[WhatsApp Bill Error] Failed to send Cafe POS receipt:', e.message);
+              });
+            }
+          }
+        } catch (wsErr) {
+          console.error('[WhatsApp Bill Error] Cafe POS checkout settings/player query failed:', wsErr.message);
+        }
+      }
     }
     await logAudit(req.user.id, 'POS Sale', auditMsg);
 
@@ -168,7 +245,150 @@ router.post('/checkout', verifyToken, async (req, res) => {
   } catch (err) {
     await conn.rollback();
     console.error(err);
-    res.status(400).json({ success: false, message: err.message || 'Server error during POS processing' });
+    res.status(400).json({ success: false, message: 'Server error during POS processing' });
+  } finally {
+    conn.release();
+  }
+});
+
+// Public Quick Order (No auth required)
+router.post('/quick-order', async (req, res) => {
+  const { location, items } = req.body;
+  if (!location || !items || !Array.isArray(items) || items.length === 0) {
+    return res.status(400).json({ success: false, message: 'Location and items are required' });
+  }
+
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+
+    const itemsSummaryList = [];
+
+    for (const item of items) {
+      // Find matching item in inventory by keyword
+      let keyword = item.name;
+      if (keyword.toLowerCase().includes('monster')) keyword = 'Monster';
+      else if (keyword.toLowerCase().includes('red bull')) keyword = 'Red Bull';
+      else if (keyword.toLowerCase().includes('ramyun') || keyword.toLowerCase().includes('shin')) keyword = 'Shin Ramyun';
+      else if (keyword.toLowerCase().includes('chips') || keyword.toLowerCase().includes('lays')) keyword = 'Chips';
+      else if (keyword.toLowerCase().includes('coffee')) keyword = 'Coffee';
+      else if (keyword.toLowerCase().includes('chocolate') || keyword.toLowerCase().includes('bar')) keyword = 'Chocolate';
+
+      const [inv] = await conn.query(
+        'SELECT id, name, stock_qty, price FROM inventory WHERE name LIKE ? FOR UPDATE',
+        [`%${keyword}%`]
+      );
+
+      if (inv.length > 0) {
+        const invItem = inv[0];
+        const qtyToDeduct = Math.min(invItem.stock_qty, item.qty);
+        if (qtyToDeduct > 0) {
+          await conn.query('UPDATE inventory SET stock_qty = stock_qty - ? WHERE id = ?', [qtyToDeduct, invItem.id]);
+          itemsSummaryList.push(`${item.qty}x ${invItem.name}`);
+        } else {
+          itemsSummaryList.push(`${item.qty}x ${item.name} (Out of Stock)`);
+        }
+      } else {
+        itemsSummaryList.push(`${item.qty}x ${item.name}`);
+      }
+    }
+
+    await conn.commit();
+
+    const itemsSummary = itemsSummaryList.join(', ');
+
+    // Broadcast to Operator Dashboard via SSE
+    broadcast('new_quick_order', {
+      location,
+      itemsSummary,
+      timestamp: new Date().toISOString()
+    });
+
+    // Also add to audit logs under admin user (ID: 1)
+    await pool.query(
+      "INSERT INTO audit_logs (user_id, action, details) VALUES (?, ?, ?)",
+      [1, 'Quick Cafe Order', `Quick Order from ${location}: ${itemsSummary}`]
+    );
+
+    res.json({ success: true, message: 'Order submitted to counter staff!' });
+  } catch (err) {
+    await conn.rollback();
+    console.error(err);
+    res.status(500).json({ success: false, message: 'Failed to process quick order' });
+  } finally {
+    conn.release();
+  }
+});
+
+// Delete a POS sale item and refund stock
+router.delete('/sale-item/:id', verifyToken, async (req, res) => {
+  const { id } = req.params;
+
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+
+    // 1. Get sale item details
+    const [items] = await conn.query(
+      'SELECT psi.*, ps.id AS sale_id, ps.status AS sale_status FROM pos_sale_items psi JOIN pos_sales ps ON psi.sale_id = ps.id WHERE psi.id = ? FOR UPDATE',
+      [id]
+    );
+
+    if (items.length === 0) {
+      throw new Error('Sale item not found');
+    }
+
+    const item = items[0];
+    if (item.sale_status !== 'Pending') {
+      throw new Error('Cannot modify a completed or paid order');
+    }
+
+    // 2. Refund inventory stock (don't refund placeholder item id 999 which is the console session charge)
+    if (item.item_id !== 999) {
+      await conn.query(
+        'UPDATE inventory SET stock_qty = stock_qty + ? WHERE id = ?',
+        [item.quantity, item.item_id]
+      );
+    }
+
+    // 3. Delete the sale item
+    await conn.query('DELETE FROM pos_sale_items WHERE id = ?', [id]);
+
+    // 4. Update parent sale totals
+    const [remaining] = await conn.query(
+      'SELECT SUM(total_price) AS subtotal FROM pos_sale_items WHERE sale_id = ?',
+      [item.sale_id]
+    );
+
+    const subtotal = parseFloat(remaining[0].subtotal || 0);
+
+    if (subtotal === 0) {
+      // If no items left, delete the sale itself
+      await conn.query('DELETE FROM pos_sales WHERE id = ?', [item.sale_id]);
+    } else {
+      const taxPercent = parseFloat(await getSystemSetting('tax_percent', '10.00'));
+      const tax = parseFloat((subtotal * (taxPercent / 100)).toFixed(2));
+      const total = parseFloat((subtotal + tax).toFixed(2));
+
+      await conn.query(
+        'UPDATE pos_sales SET subtotal = ?, tax = ?, total = ? WHERE id = ?',
+        [subtotal, tax, total, item.sale_id]
+      );
+    }
+
+    await conn.commit();
+
+    await logAudit(
+      req.user.id,
+      'POS Sale Item Delete',
+      `Deleted sale item ID: ${id} from POS Sale ID: ${item.sale_id} (Refunded stock of item ID: ${item.item_id})`
+    );
+
+    res.json({ success: true, message: 'Item removed and stock refunded' });
+  } catch (err) {
+    await conn.rollback();
+    console.error(err);
+    res.status(400).json({ success: false, message: 'Failed to delete sale item' });
   } finally {
     conn.release();
   }

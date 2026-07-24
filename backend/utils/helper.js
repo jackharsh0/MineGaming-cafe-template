@@ -63,17 +63,19 @@ const calculateHourlyRate = async (stationType, loyaltyTier, controllerCount = 1
   if (rules.length === 0) return 0;
   
   const rule = rules[0];
-  let rate = rule.hourly_rate;
+  let rate = parseFloat(rule.hourly_rate);
   
   // Add controller rate for extra controllers (1 is default/free, >1 are extra)
   if (controllerCount > 1 && rule.controller_addon_rate > 0) {
-    rate = parseFloat(rate) + ((controllerCount - 1) * parseFloat(rule.controller_addon_rate));
+    rate = rate + ((controllerCount - 1) * parseFloat(rule.controller_addon_rate));
   }
   
-  // Apply loyalty discount
-  const discountPct = await getLoyaltyDiscount(loyaltyTier);
-  rate = parseFloat(rate) * (1 - discountPct);
-  
+  // Apply loyalty discount (registered players only)
+  if (loyaltyTier && loyaltyTier !== 'Bronze') {
+    const discountPct = await getLoyaltyDiscount(loyaltyTier);
+    rate = rate * (1 - discountPct);
+  }
+
   return parseFloat(rate.toFixed(2));
 };
 

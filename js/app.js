@@ -16,8 +16,18 @@ async function apiFetch(endpoint, options = {}) {
     headers
   });
 
-  const data = await response.json();
+  const text = await response.text();
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    throw new Error('Server returned an invalid response (status ' + response.status + '). Please contact support.');
+  }
   if (!response.ok) {
+    if (response.status === 401 || response.status === 403 || data.message === 'Invalid or Expired Token') {
+      window.location.href = 'logout.php';
+      return;
+    }
     throw new Error(data.message || 'API request failed');
   }
 
@@ -29,6 +39,10 @@ function openModal(modalId) {
   const modal = document.getElementById(modalId);
   if (modal) {
     modal.classList.add('active');
+    modal.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+    const focusEl = modal.querySelector('input, select, button:not(.btn-modal-close)');
+    if (focusEl) setTimeout(() => focusEl.focus(), 50);
   }
 }
 
@@ -36,8 +50,22 @@ function closeModal(modalId) {
   const modal = document.getElementById(modalId);
   if (modal) {
     modal.classList.remove('active');
+    modal.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
   }
 }
+
+// Global Escape key to close any active modal overlay
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    const activeModal = document.querySelector('.modal-overlay.active');
+    if (activeModal) {
+      activeModal.classList.remove('active');
+      activeModal.setAttribute('aria-hidden', 'true');
+      document.body.style.overflow = '';
+    }
+  }
+});
 
 
 // Global alert notification (Toast)
@@ -53,24 +81,24 @@ function showToast(message, type = 'info') {
   const toast = document.createElement('div');
   toast.className = `p-4 rounded shadow-lg transition duration-300 transform translate-y-2 opacity-0 flex items-center gap-3 max-w-sm pointer-events-auto border`;
   
-  let icon = '<i class="fa-solid fa-circle-info text-neonCyan"></i>';
-  let border = 'border-neonCyan bg-cyberPanel text-white';
+  let icon = '<i class="fa-solid fa-circle-info text-wood"></i>';
+  let border = 'border-wood bg-parchment text-slate-100';
 
   if (type === 'success') {
-    icon = '<i class="fa-solid fa-circle-check text-neonGreen"></i>';
-    border = 'border-neonGreen bg-cyberPanel text-white';
+    icon = '<i class="fa-solid fa-circle-check text-forest"></i>';
+    border = 'border-forest bg-parchment text-slate-100';
   } else if (type === 'error') {
-    icon = '<i class="fa-solid fa-circle-exclamation text-neonRed"></i>';
-    border = 'border-neonRed bg-cyberPanel text-white';
+    icon = '<i class="fa-solid fa-circle-exclamation text-rust"></i>';
+    border = 'border-rust bg-parchment text-slate-100';
   } else if (type === 'warning') {
-    icon = '<i class="fa-solid fa-triangle-exclamation text-neonGold"></i>';
-    border = 'border-neonGold bg-cyberPanel text-white';
+    icon = '<i class="fa-solid fa-triangle-exclamation text-brass"></i>';
+    border = 'border-brass bg-parchment text-slate-100';
   }
 
   toast.innerHTML = `
     <div class="text-lg">${icon}</div>
     <div class="text-sm font-semibold flex-grow">${message}</div>
-    <button class="text-slate-400 hover:text-white" onclick="this.parentElement.remove()">&times;</button>
+    <button class="text-slate-400 hover:text-slate-100" onclick="this.parentElement.remove()">&times;</button>
   `;
 
   toast.className += ` ${border}`;
@@ -98,7 +126,7 @@ window.showConfirm = function(title, message, onConfirm) {
     modal.innerHTML = `
       <div class="modal-container max-w-sm">
         <div class="modal-header">
-          <h3 class="modal-title text-neonRed font-cyber uppercase" id="confirm-modal-title">Confirm Action</h3>
+          <h3 class="modal-title text-rust font-cyber uppercase" id="confirm-modal-title">Confirm Action</h3>
           <button class="btn-modal-close" onclick="closeModal('modal-confirm-action')">&times;</button>
         </div>
         <div class="modal-body">
@@ -145,85 +173,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }, { once: true });
 });
 
-// Sound Effects Helper using Web Audio API
-window.SoundEffects = {
-  ctx: null,
-  init() {
-    if (!this.ctx) {
-      this.ctx = new (window.AudioContext || window.webkitAudioContext)();
-    }
-  },
-  playTimerEnded() {
-    try {
-      this.init();
-      if (this.ctx.state === 'suspended') {
-        this.ctx.resume();
-      }
-      const now = this.ctx.currentTime;
-      // Loud retro chime arpeggios
-      const osc1 = this.ctx.createOscillator();
-      const osc2 = this.ctx.createOscillator();
-      const gainNode = this.ctx.createGain();
-
-      osc1.type = 'triangle';
-      osc2.type = 'sine';
-
-      // Arpeggio: C5 (523.25) -> E5 (659.25) -> G5 (783.99) -> C6 (1046.50)
-      osc1.frequency.setValueAtTime(523.25, now);
-      osc1.frequency.setValueAtTime(659.25, now + 0.12);
-      osc1.frequency.setValueAtTime(783.99, now + 0.24);
-      osc1.frequency.setValueAtTime(1046.50, now + 0.36);
-
-      osc2.frequency.setValueAtTime(523.25 / 2, now);
-      osc2.frequency.setValueAtTime(659.25 / 2, now + 0.12);
-      osc2.frequency.setValueAtTime(783.99 / 2, now + 0.24);
-      osc2.frequency.setValueAtTime(1046.50 / 2, now + 0.36);
-
-      gainNode.gain.setValueAtTime(0.5, now); // loud volume!
-      gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.7);
-
-      osc1.connect(gainNode);
-      osc2.connect(gainNode);
-      gainNode.connect(this.ctx.destination);
-
-      osc1.start(now);
-      osc2.start(now);
-      osc1.stop(now + 0.7);
-      osc2.stop(now + 0.7);
-    } catch (err) {
-      console.warn('Sound play blocked or failed:', err);
-    }
-  },
-  playNewAppointment() {
-    try {
-      this.init();
-      if (this.ctx.state === 'suspended') {
-        this.ctx.resume();
-      }
-      const now = this.ctx.currentTime;
-      // Distinct synth song/melody: G5 (783.99) -> C6 (1046.50) -> E6 (1318.51)
-      const osc = this.ctx.createOscillator();
-      const gainNode = this.ctx.createGain();
-
-      osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(783.99, now);
-      osc.frequency.setValueAtTime(1046.50, now + 0.18);
-      osc.frequency.setValueAtTime(1318.51, now + 0.36);
-
-      gainNode.gain.setValueAtTime(0.25, now);
-      gainNode.gain.setValueAtTime(0.25, now + 0.36);
-      gainNode.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
-
-      osc.connect(gainNode);
-      gainNode.connect(this.ctx.destination);
-
-      osc.start(now);
-      osc.stop(now + 0.6);
-    } catch (err) {
-      console.warn('Sound play blocked or failed:', err);
-    }
-  }
-};
+// Web Audio API Synthesizer (SoundEffects) is defined below.
 
 // ==========================================
 // Web Audio API Synthesizer (SoundEffects)
@@ -317,3 +267,242 @@ document.addEventListener('click', () => {
   SoundEffects.init();
 }, { passive: true });
 window.SoundEffects = SoundEffects;
+
+window.initMemberSlider = function(targetId, valueType = 'id', allowGuest = true) {
+  const target = document.getElementById(targetId);
+  if (!target) return;
+
+  // Prevent double-initialization
+  const existingWidget = document.querySelector(`.member-slider-widget[data-target="${targetId}"]`);
+  if (existingWidget) {
+    existingWidget.remove();
+  }
+
+  // Create widget container
+  const widget = document.createElement('div');
+  widget.className = 'member-slider-widget mt-2 w-full';
+  widget.setAttribute('data-target', targetId);
+
+  // Widget layout
+  widget.innerHTML = `
+    <!-- Top search bar only (no Add buttons or register forms) -->
+    <div class="relative w-full mb-2">
+      <span class="absolute inset-y-0 left-0 flex items-center pl-2 text-slate-500 text-xs">
+        <i class="fa-solid fa-magnifying-glass"></i>
+      </span>
+      <input type="text" placeholder="Search by name/phone or enter new number..." class="form-control text-xs w-full pl-7 pr-2 py-1.5 bg-slate-900/40 border border-slate-800 rounded text-slate-200 slider-search-input">
+    </div>
+
+    <!-- Horizontal scroll slider list -->
+    <div class="flex gap-2 overflow-x-auto pb-1.5 pt-0.5 scrollbar-thin max-w-full slider-cards-container" style="min-height: 80px;">
+      <div class="text-xs text-slate-400 p-2 animate-pulse">Loading members...</div>
+    </div>
+  `;
+
+  // Hide the original target select/input element
+  target.style.display = 'none';
+  target.parentNode.insertBefore(widget, target.nextSibling);
+
+  // References
+  const searchInput = widget.querySelector('.slider-search-input');
+  const cardsContainer = widget.querySelector('.slider-cards-container');
+
+  let playersList = [];
+  let selectedValue = target.value;
+
+  // Direct register new player
+  async function handleDirectAddPlayer(phone) {
+    const defaultName = `Player ${phone}`;
+    try {
+      showToast(`Registering new member: ${phone}...`, 'info');
+      const res = await apiFetch('/players', {
+        method: 'POST',
+        body: JSON.stringify({ name: defaultName, phone })
+      });
+      if (res.success) {
+        showToast('Player registered successfully!', 'success');
+        const valToSelect = valueType === 'phone' ? res.player.phone : res.player.id;
+        await refreshList(valToSelect);
+      }
+    } catch (err) {
+      showToast(err.message || 'Failed to register player', 'error');
+    }
+  }
+
+  // Fetch and render players
+  async function refreshList(selectValueOnLoad = null) {
+    try {
+      const data = await apiFetch('/players');
+      if (data.success) {
+        playersList = data.players.filter(p => !p.is_blacklisted);
+        renderCards(selectValueOnLoad);
+      }
+    } catch (err) {
+      console.error('Failed to load players for slider:', err);
+      cardsContainer.innerHTML = `<div class="text-xs text-rust p-2">Failed to load members</div>`;
+    }
+  }
+
+  // Render cards based on search query
+  function renderCards(selectValueOnLoad = null) {
+    const isDisabled = target.disabled || target.readOnly;
+    const topRow = widget.querySelector('.relative.w-full.mb-2');
+    if (topRow) {
+      topRow.style.display = isDisabled ? 'none' : 'block';
+    }
+    if (isDisabled) {
+      cardsContainer.classList.add('pointer-events-none', 'opacity-80');
+    } else {
+      cardsContainer.classList.remove('pointer-events-none', 'opacity-80');
+    }
+
+    const query = searchInput.value.trim().toLowerCase();
+    const filtered = playersList.filter(p => 
+      p.name.toLowerCase().includes(query) || 
+      p.phone.includes(query)
+    );
+
+    cardsContainer.innerHTML = '';
+
+    // 1. Render Guest Card (if allowed)
+    if (allowGuest && !query) {
+      const guestCard = document.createElement('div');
+      guestCard.className = `flex-shrink-0 w-28 p-2 rounded border cursor-pointer flex flex-col items-center justify-center text-center transition-all duration-300 hover-3d-push `;
+      
+      const isGuestSelected = !selectedValue;
+      if (isGuestSelected) {
+        guestCard.className += 'bg-wood/20 border-wood text-slate-100 font-bold';
+      } else {
+        guestCard.className += 'bg-slate-900/20 border-slate-800/60 hover:bg-slate-900/40 text-slate-300';
+      }
+
+      guestCard.innerHTML = `
+        <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold bg-slate-700 text-slate-200 uppercase">
+          <i class="fa-solid fa-user-secret"></i>
+        </div>
+        <div class="text-[10px] font-cyber font-bold truncate mt-1 max-w-full">Guest Walk-in</div>
+        <div class="text-[8px] text-slate-500 font-mono">No membership</div>
+      `;
+
+      guestCard.addEventListener('click', () => {
+        selectCard('', guestCard);
+      });
+
+      cardsContainer.appendChild(guestCard);
+    }
+
+    // 2. Render Player Cards
+    filtered.forEach(player => {
+      const playerVal = valueType === 'phone' ? player.phone : player.id;
+      const isSelected = String(selectedValue) === String(playerVal) || String(selectValueOnLoad) === String(playerVal);
+      
+      if (isSelected && selectValueOnLoad) {
+        selectedValue = playerVal;
+        target.value = playerVal;
+        target.dispatchEvent(new Event('change', { bubbles: true }));
+        target.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+
+      const card = document.createElement('div');
+      card.className = `flex-shrink-0 w-32 p-2 rounded border cursor-pointer flex flex-col items-center justify-center text-center transition-all duration-300 hover-3d-float `;
+      
+      if (isSelected) {
+        card.className += 'bg-wood/10 border-wood-gold text-slate-100 font-bold';
+      } else {
+        card.className += 'bg-slate-900/20 border-slate-800/60 hover:bg-slate-900/40 text-slate-300';
+      }
+
+      // Initial letters
+      const initials = player.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
+
+      card.innerHTML = `
+        <div class="w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold bg-wood text-parchment uppercase relative">
+          <span>${initials}</span>
+          <span class="absolute -bottom-1 -right-1 text-[8px] px-1 rounded-full font-bold ${
+            player.loyalty_tier === 'Gold' ? 'bg-brass text-slate-950 font-bold' :
+            player.loyalty_tier === 'Silver' ? 'bg-slate-400 text-slate-950' : 'bg-amber-800 text-slate-200'
+          }">${player.loyalty_tier[0]}</span>
+        </div>
+        <div class="text-[10px] font-bold truncate mt-1 max-w-full" title="${player.name}">${player.name}</div>
+        <div class="text-[8px] text-slate-500 font-mono">${player.phone}</div>
+        <div class="text-[8px] text-wood font-semibold mt-1">Hrs: ${parseFloat(player.play_hours).toFixed(2)}</div>
+      `;
+
+      card.addEventListener('click', () => {
+        selectCard(playerVal, card);
+      });
+
+      cardsContainer.appendChild(card);
+    });
+
+    // 3. Render Direct Add Card if query is a phone number and not exactly matched
+    const cleanedQuery = query.replace(/[^0-9+]/g, '');
+    const isNumericQuery = /^\+?[0-9]{4,15}$/.test(cleanedQuery);
+    if (isNumericQuery && !isDisabled) {
+      const hasExactMatch = playersList.some(p => p.phone === cleanedQuery);
+      if (!hasExactMatch) {
+        const addCard = document.createElement('div');
+        addCard.className = `flex-shrink-0 w-28 p-2 rounded border border-dashed border-wood-gold bg-wood/5 hover:bg-wood/15 cursor-pointer flex flex-col items-center justify-center text-center transition-all duration-300 hover-3d-push text-wood-gold`;
+        addCard.innerHTML = `
+          <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold bg-wood text-parchment uppercase">
+            <i class="fa-solid fa-user-plus"></i>
+          </div>
+          <div class="text-[10px] font-bold truncate mt-1 max-w-full">Add Member</div>
+          <div class="text-[8px] text-slate-500 font-mono">${cleanedQuery}</div>
+          <div class="text-[8px] text-wood font-semibold mt-1">Register Now</div>
+        `;
+        addCard.addEventListener('click', () => {
+          handleDirectAddPlayer(cleanedQuery);
+        });
+        cardsContainer.appendChild(addCard);
+      }
+    }
+
+    if (filtered.length === 0 && (!allowGuest || query) && !isNumericQuery) {
+      cardsContainer.innerHTML = `<div class="text-xs text-slate-500 p-3 italic">No registered members found.</div>`;
+    }
+  }
+
+  // Select card handler
+  function selectCard(val, cardElement) {
+    if (target.disabled || target.readOnly) return;
+    selectedValue = val;
+    target.value = val;
+    
+    // Dispatch events to trigger any dynamic PHP/JS form handlers
+    target.dispatchEvent(new Event('change', { bubbles: true }));
+    target.dispatchEvent(new Event('input', { bubbles: true }));
+
+    // Re-render cards to show active select border
+    renderCards();
+  }
+
+  // Search filter listener
+  searchInput.addEventListener('input', () => {
+    renderCards();
+  });
+
+  // Initial load
+  refreshList(selectedValue);
+
+  // Sync back if target changes externally (e.g. from reset forms)
+  const syncObserver = new MutationObserver(() => {
+    if (String(target.value) !== String(selectedValue)) {
+      selectedValue = target.value;
+      renderCards();
+    }
+  });
+  syncObserver.observe(target, { attributes: true, childList: true, characterData: true });
+  
+  // Also hook into periodic select/input value change polls
+  const checkValInterval = setInterval(() => {
+    if (!document.body.contains(widget)) {
+      clearInterval(checkValInterval);
+      return;
+    }
+    if (String(target.value) !== String(selectedValue)) {
+      selectedValue = target.value;
+      renderCards();
+    }
+  }, 500);
+};

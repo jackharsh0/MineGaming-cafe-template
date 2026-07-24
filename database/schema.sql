@@ -3,16 +3,20 @@ CREATE DATABASE IF NOT EXISTS `gaming_zone`;
 USE `gaming_zone`;
 
 -- Drop tables in reverse order of dependencies to avoid constraint issues
+DROP TABLE IF EXISTS `whatsapp_queue`;
 DROP TABLE IF EXISTS `appointments`;
 DROP TABLE IF EXISTS `coupons`;
 DROP TABLE IF EXISTS `audit_logs`;
+DROP TABLE IF EXISTS `shift_logs`;
 DROP TABLE IF EXISTS `pos_sale_items`;
 DROP TABLE IF EXISTS `pos_sales`;
 DROP TABLE IF EXISTS `inventory`;
 DROP TABLE IF EXISTS `game_sessions`;
 DROP TABLE IF EXISTS `pricing_rules`;
+DROP TABLE IF EXISTS `categories`;
 DROP TABLE IF EXISTS `players`;
 DROP TABLE IF EXISTS `stations`;
+DROP TABLE IF EXISTS `system_settings`;
 DROP TABLE IF EXISTS `users_admin`;
 
 -- 1. users_admin
@@ -30,7 +34,7 @@ CREATE TABLE `users_admin` (
 CREATE TABLE `stations` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `name` VARCHAR(50) NOT NULL UNIQUE,
-  `type` ENUM('PC', 'PS5', 'Xbox', 'VR', 'Other') NOT NULL,
+  `type` ENUM('PC', 'PS5', 'Xbox', 'VR', 'Pool', 'Other', 'Dining', 'PS4') NOT NULL,
   `specs_cpu` VARCHAR(100) DEFAULT NULL,
   `specs_gpu` VARCHAR(100) DEFAULT NULL,
   `specs_ram` VARCHAR(50) DEFAULT NULL,
@@ -38,8 +42,10 @@ CREATE TABLE `stations` (
   `ip_address` VARCHAR(45) DEFAULT NULL,
   `mac_address` VARCHAR(17) DEFAULT NULL,
   `status` ENUM('Available', 'Occupied', 'Maintenance') NOT NULL DEFAULT 'Available',
+  `is_deleted` TINYINT(1) NOT NULL DEFAULT 0,
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  INDEX idx_status (`status`)
+  INDEX idx_status (`status`),
+  INDEX idx_is_deleted (`is_deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- 3. players
@@ -48,7 +54,7 @@ CREATE TABLE `players` (
   `name` VARCHAR(100) NOT NULL,
   `phone` VARCHAR(20) NOT NULL UNIQUE,
   `email` VARCHAR(100) DEFAULT NULL,
-  `wallet_balance` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+  `play_hours` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
   `loyalty_points` INT NOT NULL DEFAULT 0,
   `loyalty_tier` ENUM('Bronze', 'Silver', 'Gold') NOT NULL DEFAULT 'Bronze',
   `is_blacklisted` TINYINT(1) NOT NULL DEFAULT 0,
@@ -61,7 +67,7 @@ CREATE TABLE `players` (
 -- 4. pricing_rules
 CREATE TABLE `pricing_rules` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
-  `station_type` ENUM('PC', 'PS5', 'Xbox', 'VR', 'Other') NOT NULL UNIQUE,
+  `station_type` ENUM('PC', 'PS5', 'Xbox', 'VR', 'Pool', 'Other', 'Dining', 'PS4') NOT NULL UNIQUE,
   `hourly_rate` DECIMAL(10,2) NOT NULL,
   `peak_hourly_rate` DECIMAL(10,2) NOT NULL,
   `peak_start_time` TIME DEFAULT '18:00:00',
@@ -88,6 +94,8 @@ CREATE TABLE `game_sessions` (
   `total_cost` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
   `status` ENUM('Active', 'Paused', 'Completed', 'Cancelled') NOT NULL DEFAULT 'Active',
   `created_by` INT NOT NULL,
+  `payment_intent_id` VARCHAR(255) DEFAULT NULL,
+  `transaction_id` VARCHAR(255) DEFAULT NULL,
   FOREIGN KEY (`station_id`) REFERENCES `stations`(`id`),
   FOREIGN KEY (`player_id`) REFERENCES `players`(`id`) ON DELETE SET NULL,
   FOREIGN KEY (`created_by`) REFERENCES `users_admin`(`id`),
@@ -118,12 +126,15 @@ CREATE TABLE `pos_sales` (
   `tax` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
   `discount` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
   `total` DECIMAL(10,2) NOT NULL,
-  `payment_method` ENUM('Cash', 'Wallet', 'Card', 'Split') NOT NULL,
-  `wallet_amount` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+  `payment_method` ENUM('Cash', 'PlayHours', 'Card', 'Split') NOT NULL,
+  `play_hours_amount` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
   `cash_amount` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
   `status` ENUM('Paid', 'Pending') NOT NULL DEFAULT 'Paid',
   `created_by` INT NOT NULL,
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `merged_from_session_id` INT DEFAULT NULL,
+  `payment_intent_id` VARCHAR(255) DEFAULT NULL,
+  `transaction_id` VARCHAR(255) DEFAULT NULL,
   FOREIGN KEY (`session_id`) REFERENCES `game_sessions`(`id`) ON DELETE SET NULL,
   FOREIGN KEY (`player_id`) REFERENCES `players`(`id`) ON DELETE SET NULL,
   FOREIGN KEY (`created_by`) REFERENCES `users_admin`(`id`),
@@ -137,11 +148,11 @@ CREATE TABLE `pos_sale_items` (
   `id` INT AUTO_INCREMENT PRIMARY KEY,
   `sale_id` INT NOT NULL,
   `item_id` INT NOT NULL,
-  `quantity` INT NOT NULL,
+  `quantity` DECIMAL(10,2) NOT NULL,
   `unit_price` DECIMAL(10,2) NOT NULL,
   `total_price` DECIMAL(10,2) NOT NULL,
   FOREIGN KEY (`sale_id`) REFERENCES `pos_sales`(`id`) ON DELETE CASCADE,
-  FOREIGN KEY (`item_id`) REFERENCES `inventory`(`id`) ON DELETE CASCADE,
+  FOREIGN KEY (`item_id`) REFERENCES `inventory`(`id`) ON DELETE RESTRICT,
   INDEX idx_sale_id (`sale_id`),
   INDEX idx_item_id (`item_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -186,6 +197,43 @@ CREATE TABLE `coupons` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 
+-- 12. system_settings
+CREATE TABLE `system_settings` (
+  `setting_key` VARCHAR(50) NOT NULL PRIMARY KEY,
+  `setting_value` TEXT DEFAULT NULL,
+  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+INSERT INTO `system_settings` (`setting_key`, `setting_value`) VALUES
+('whatsapp_enabled', 'false'),
+('enabled_station_types', '["PC","PS5","Xbox","VR","Pool","Dining","Other","PS4"]'),
+('whatsapp_pacing_min', '7'),
+('whatsapp_pacing_max', '15');
+
+-- 13. shift_logs
+CREATE TABLE `shift_logs` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `user_id` INT NOT NULL,
+  `check_in` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `check_out` TIMESTAMP NULL DEFAULT NULL,
+  `opening_cash` DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+  `closing_cash` DECIMAL(10,2) DEFAULT NULL,
+  `status` ENUM('Open', 'Closed') NOT NULL DEFAULT 'Open',
+  FOREIGN KEY (`user_id`) REFERENCES `users_admin`(`id`) ON DELETE CASCADE,
+  INDEX idx_user_id (`user_id`),
+  INDEX idx_status (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- 14. categories
+CREATE TABLE `categories` (
+  `id` INT AUTO_INCREMENT PRIMARY KEY,
+  `name` VARCHAR(50) NOT NULL UNIQUE,
+  `icon` VARCHAR(10) NOT NULL DEFAULT '📦',
+  `display_order` INT NOT NULL DEFAULT 0,
+  `is_active` TINYINT(1) NOT NULL DEFAULT 1,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 -- ==========================================
 -- SEED DATA
 -- ==========================================
@@ -198,12 +246,14 @@ INSERT INTO `users_admin` (`id`, `username`, `password_hash`, `full_name`, `role
 (3, 'attendant', '$2a$10$NITZtZyTXaXbQxsTrvlcyeO/gNG0nuIOKyAQKtzUxQ6h4KLM7j6Z6', 'Shift Attendant', 'Attendant', 'Active');
 
 -- Seed Pricing Rules
-INSERT INTO `pricing_rules` (`station_type`, `hourly_rate`, `peak_hourly_rate`, `peak_start_time`, `peak_end_time`, `controller_addon_rate`) VALUES
-('PC', 5.00, 7.50, '18:00:00', '23:59:59', 0.00),
-('PS5', 6.00, 9.00, '18:00:00', '23:59:59', 2.00),
-('Xbox', 6.00, 8.50, '18:00:00', '23:59:59', 1.50),
-('VR', 12.00, 15.00, '18:00:00', '23:59:59', 0.00),
-('Other', 4.00, 6.00, '18:00:00', '23:59:59', 1.00);
+INSERT INTO `pricing_rules` (`station_type`, `hourly_rate`, `controller_addon_rate`) VALUES
+('PC', 5.00, 0.00),
+('PS5', 6.00, 2.00),
+('Xbox', 6.00, 1.50),
+('VR', 12.00, 0.00),
+('Pool', 8.00, 0.00),
+('Other', 4.00, 1.00),
+('PS4', 5.00, 2.00);
 
 -- Seed Stations
 INSERT INTO `stations` (`id`, `name`, `type`, `specs_cpu`, `specs_gpu`, `specs_ram`, `specs_peripherals`, `ip_address`, `mac_address`, `status`) VALUES
@@ -217,7 +267,7 @@ INSERT INTO `stations` (`id`, `name`, `type`, `specs_cpu`, `specs_gpu`, `specs_r
 (8, 'VR-Booth-01', 'VR', 'Intel Core i7-13700K', 'RTX 4070 Ti', '32GB DDR5', 'Meta Quest 3, Ceiling Mount Cables', '192.168.1.108', '00:1A:2B:3C:4D:65', 'Available');
 
 -- Seed Players
-INSERT INTO `players` (`id`, `name`, `phone`, `email`, `wallet_balance`, `loyalty_points`, `loyalty_tier`, `is_blacklisted`, `blacklist_notes`) VALUES
+INSERT INTO `players` (`id`, `name`, `phone`, `email`, `play_hours`, `loyalty_points`, `loyalty_tier`, `is_blacklisted`, `blacklist_notes`) VALUES
 (1, 'Jack Reacher', '+15550199', 'jack@reacher.com', 50.00, 120, 'Silver', 0, NULL),
 (2, 'Sarah Connor', '+15550188', 'sarah@skynet.com', 15.50, 45, 'Bronze', 0, NULL),
 (3, 'John Doe', '+15550177', 'john@doe.com', 120.00, 350, 'Gold', 0, NULL),

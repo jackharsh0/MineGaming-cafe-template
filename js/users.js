@@ -52,9 +52,9 @@ async function loadUsersList() {
         `;
 
         tr.innerHTML = `
-          <td class="font-bold text-white">${user.full_name} ${isSelf ? '<span class="text-[9px] tracking-widest uppercase font-mono text-neonCyan ml-1">(You)</span>' : ''}</td>
+          <td class="font-bold text-slate-100">${user.full_name} ${isSelf ? '<span class="text-[9px] tracking-widest uppercase font-mono text-wood ml-1">(You)</span>' : ''}</td>
           <td class="font-mono text-xs text-slate-300">${user.username}</td>
-          <td><span class="station-type-badge ${user.role === 'SuperAdmin' ? 'border-neonCyan text-neonCyan' : user.role === 'Manager' ? 'border-neonPink text-neonPink' : 'border-slate-500 text-slate-400'}">${user.role}</span></td>
+          <td><span class="station-type-badge ${user.role === 'SuperAdmin' ? 'border-wood text-wood' : user.role === 'Manager' ? 'border-clay text-clay' : 'border-slate-500 text-slate-400'}">${user.role}</span></td>
           <td>${statusBadge}</td>
           <td class="text-xs text-slate-400 font-mono">${dateStr}</td>
           <td>${actionsHTML}</td>
@@ -64,14 +64,18 @@ async function loadUsersList() {
     } else {
       tbody.innerHTML = `
         <tr>
-          <td colspan="6" class="text-center py-6 text-slate-500">No staff user accounts registered in database.</td>
+          <td colspan="6" class="text-center py-12 text-slate-500">
+            <i class="fa-solid fa-user-gear text-3xl text-slate-600 mb-2"></i>
+            <p class="font-cyber text-sm">No staff accounts yet.</p>
+            <p class="text-xs mt-1">Click "Add Account" to create one.</p>
+          </td>
         </tr>
       `;
     }
   } catch (err) {
     tbody.innerHTML = `
       <tr>
-        <td colspan="6" class="text-center py-6 text-neonRed font-bold">Failed to load user list: ${err.message}</td>
+        <td colspan="6" class="text-center py-6 text-rust font-bold">Failed to load user list: ${err.message}</td>
       </tr>
     `;
   }
