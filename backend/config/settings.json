@@ -7,10 +7,15 @@
     "phone": "+91 98765-43210",
     "email": "hello@soleila.in",
     "est_year": "2024",
-    "currency_symbol": "₹",
+    "currency_symbol": "\u20b9",
     "receipt_footer": "THANK YOU FOR PLAYING AT SOLEILA!",
     "copyright_text": "All rights reserved.",
-    "logo_url": ""
+    "logo_url": "",
+    "primary_color": "#5c4033",
+    "secondary_color": "#a0522d",
+    "font_family": "Inter",
+    "favicon_url": "",
+    "invoice_prefix": "INV-"
   },
   "website": {
     "hero_title": "Where Console Meets the Felt",
@@ -37,13 +42,22 @@
       "gold": "Unlocked at 300 loyalty points. 15% off, free tournament entry, priority seating."
     },
     "default_food_items": [
-      {"icon": "🥤", "name": "Monster Energy", "price": 3.00},
-      {"icon": "🥤", "name": "Red Bull", "price": 3.50},
-      {"icon": "🍜", "name": "Shin Ramyun", "price": 4.00},
-      {"icon": "🍿", "name": "Chips Pack", "price": 1.50},
-      {"icon": "☕", "name": "Cold Coffee", "price": 2.50},
-      {"icon": "🍫", "name": "Chocolate Bar", "price": 2.00}
-    ]
+      {"icon": "\ud83e\udd64", "name": "Monster Energy", "price": 3.00},
+      {"icon": "\ud83e\udd64", "name": "Red Bull", "price": 3.50},
+      {"icon": "\ud83c\udf5c", "name": "Shin Ramyun", "price": 4.00},
+      {"icon": "\ud83c\udf7f", "name": "Chips Pack", "price": 1.50},
+      {"icon": "\u2615", "name": "Cold Coffee", "price": 2.50},
+      {"icon": "\ud83c\udf6b", "name": "Chocolate Bar", "price": 2.00}
+    ],
+    "theme_mode": "dark",
+    "hero_video_url": "",
+    "hero_overlay_opacity": 0.4,
+    "gallery_images": [],
+    "social_links": {},
+    "contact_form_email": "",
+    "announcement_banner": "",
+    "announcement_banner_enabled": false,
+    "cookie_consent_enabled": false
   },
   "stations": {
     "display_names": {
@@ -51,7 +65,40 @@
       "Xbox": "Xbox Series X", "Pool": "Pool Table",
       "Dining": "Dining Table", "VR": "VR Station",
       "Other": "Other", "PC": "PC Station"
-    }
+    },
+    "naming_pattern": "{type}-{n:02d}",
+    "default_hourly_rate": 5.00,
+    "minimum_billing_minutes": 15,
+    "rounding_interval": 1,
+    "auto_lock_enabled": true,
+    "occupancy_refresh_seconds": 10
+  },
+  "billing": {
+    "tax_label": "GST",
+    "currency_position": "before",
+    "decimal_places": 2,
+    "rounding_mode": "nearest",
+    "service_charge_percent": 0,
+    "discount_max_percent": 50
+  },
+  "notifications": {
+    "sound_enabled": true,
+    "sound_timer_end": "",
+    "signal_bell_on_checkout": true,
+    "slack_webhook_url": "",
+    "email_alerts": "",
+    "sms_api_key": ""
+  },
+  "security": {
+    "session_timeout_minutes": 120,
+    "max_login_attempts": 5,
+    "maintenance_ip_whitelist": ""
+  },
+  "receipt": {
+    "show_logo": true,
+    "show_tax_breakdown": true,
+    "footer_message": "",
+    "auto_print": false
   },
   "system": {
     "page_title": "Soleila - Jodhpur's Premier Lounge",
