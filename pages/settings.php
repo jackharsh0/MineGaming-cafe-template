@@ -23,6 +23,9 @@ if ($role !== 'SuperAdmin') {
     <button type="button" data-tab="notifications" class="settings-tab-btn px-4 py-2 rounded-t text-xs font-cyber uppercase tracking-wider transition bg-kraft text-slate-400 hover:bg-wood/30">Notifications</button>
     <button type="button" data-tab="security" class="settings-tab-btn px-4 py-2 rounded-t text-xs font-cyber uppercase tracking-wider transition bg-kraft text-slate-400 hover:bg-wood/30">Security</button>
     <button type="button" data-tab="receipt" class="settings-tab-btn px-4 py-2 rounded-t text-xs font-cyber uppercase tracking-wider transition bg-kraft text-slate-400 hover:bg-wood/30">Receipt</button>
+    <button type="button" data-tab="bookings" class="settings-tab-btn px-4 py-2 rounded-t text-xs font-cyber uppercase tracking-wider transition bg-kraft text-slate-400 hover:bg-wood/30">Bookings</button>
+    <button type="button" data-tab="sessions" class="settings-tab-btn px-4 py-2 rounded-t text-xs font-cyber uppercase tracking-wider transition bg-kraft text-slate-400 hover:bg-wood/30">Sessions</button>
+    <button type="button" data-tab="players" class="settings-tab-btn px-4 py-2 rounded-t text-xs font-cyber uppercase tracking-wider transition bg-kraft text-slate-400 hover:bg-wood/30">Players</button>
     <button type="button" data-tab="system" class="settings-tab-btn px-4 py-2 rounded-t text-xs font-cyber uppercase tracking-wider transition bg-kraft text-slate-400 hover:bg-wood/30">System</button>
   </div>
 
@@ -67,6 +70,8 @@ if ($role !== 'SuperAdmin') {
         </select>
       </div>
       <div class="form-group"><label class="form-label">Favicon URL</label><input id="brand-favicon-url" class="form-control" placeholder="https://soleila.in/favicon.ico"></div>
+      <div class="form-group"><label class="form-label">WhatsApp Phone</label><input id="brand-whatsapp-phone" class="form-control" placeholder="+919876543210"></div>
+      <div class="form-group"><label class="form-label">Cover Image URL</label><input id="brand-cover-image" class="form-control" placeholder="https://soleila.in/cover.jpg"></div>
     </div>
     <div class="mt-6"><button onclick="saveTab('brand')" class="btn btn-primary"><i class="fa-solid fa-floppy-disk mr-1"></i> Save Brand Settings</button></div>
   </div>
@@ -144,6 +149,13 @@ if ($role !== 'SuperAdmin') {
     <div id="food-items-list" class="space-y-2 max-w-xl mb-3"></div>
     <button type="button" onclick="addDefaultFoodItem()" class="btn btn-secondary btn-sm"><i class="fa-solid fa-plus mr-1"></i> Add Item</button>
 
+    <h3 class="text-md font-bold text-wood mt-6 mb-3 border-t border-slate-800 pt-4">Advanced</h3>
+    <div class="grid grid-cols-2 gap-4 max-w-3xl">
+      <div class="form-group"><label class="form-label"><input type="checkbox" id="web-show-live-status" class="accent-wood mr-1"> Show Live Status Board</label></div>
+      <div class="form-group"><label class="form-label"><input type="checkbox" id="web-show-pricing" class="accent-wood mr-1"> Show Pricing Table</label></div>
+      <div class="col-span-2 form-group"><label class="form-label">Custom Footer HTML</label><textarea id="web-footer-html" class="form-control h-20" placeholder="&lt;script&gt;...&lt;/script&gt; or custom HTML"></textarea></div>
+    </div>
+
     <div class="mt-6"><button onclick="saveTab('website')" class="btn btn-primary"><i class="fa-solid fa-floppy-disk mr-1"></i> Save Website Settings</button></div>
   </div>
 
@@ -218,6 +230,9 @@ if ($role !== 'SuperAdmin') {
       </div>
       <div class="form-group"><label class="form-label">Service Charge (%)</label><input type="number" step="0.01" id="billing-service-charge" class="form-control" placeholder="0"></div>
       <div class="form-group"><label class="form-label">Max Discount (%)</label><input type="number" step="1" id="billing-max-discount" class="form-control" placeholder="50"></div>
+      <div class="form-group"><label class="form-label"><input type="checkbox" id="billing-tax-inclusive" class="accent-wood mr-1"> Prices are tax-inclusive</label></div>
+      <div class="form-group"><label class="form-label">Min Cafe Order (₹)</label><input type="number" step="0.01" id="billing-cafe-min" class="form-control" placeholder="0"></div>
+      <div class="form-group"><label class="form-label">Invoice Due (days)</label><input type="number" id="billing-invoice-due" class="form-control" placeholder="0 (due immediately)"></div>
     </div>
     <div class="mt-6"><button onclick="saveTab('billing')" class="btn btn-primary"><i class="fa-solid fa-floppy-disk mr-1"></i> Save Billing Settings</button></div>
   </div>
@@ -259,6 +274,57 @@ if ($role !== 'SuperAdmin') {
     <div class="mt-6"><button onclick="saveTab('receipt')" class="btn btn-primary"><i class="fa-solid fa-floppy-disk mr-1"></i> Save Receipt Settings</button></div>
   </div>
 
+  <!-- TAB: BOOKINGS -->
+  <div id="tab-bookings" class="settings-tab-pane hidden bg-parchment border border-slate-800 rounded-lg p-6">
+    <h2 class="text-lg font-bold text-wood mb-4 flex items-center gap-2"><i class="fa-solid fa-calendar-check"></i> Bookings & Appointments</h2>
+    <div class="grid grid-cols-2 gap-4 max-w-lg">
+      <div class="form-group"><label class="form-label">Auto-Confirm (minutes)</label><input type="number" id="book-auto-confirm" class="form-control" placeholder="0 = manual only"></div>
+      <div class="form-group"><label class="form-label">Max Days Advance</label><input type="number" id="book-max-days" class="form-control" placeholder="30"></div>
+      <div class="form-group"><label class="form-label">Min Notice (hours)</label><input type="number" id="book-min-notice" class="form-control" placeholder="2"></div>
+      <div class="form-group"><label class="form-label">Deposit Required (%)</label><input type="number" id="book-deposit" class="form-control" placeholder="0 = no deposit"></div>
+      <div class="form-group"><label class="form-label">Free Cancel Window (hours)</label><input type="number" id="book-cancel-hours" class="form-control" placeholder="24"></div>
+      <div class="form-group"><label class="form-label">Max Guests Per Booking</label><input type="number" id="book-max-guests" class="form-control" placeholder="10"></div>
+      <div class="form-group"><label class="form-label"><input type="checkbox" id="book-notify-staff" class="accent-wood mr-1"> Notify staff on new booking</label></div>
+    </div>
+    <div class="mt-6"><button onclick="saveTab('bookings')" class="btn btn-primary"><i class="fa-solid fa-floppy-disk mr-1"></i> Save Booking Settings</button></div>
+  </div>
+
+  <!-- TAB: SESSIONS -->
+  <div id="tab-sessions" class="settings-tab-pane hidden bg-parchment border border-slate-800 rounded-lg p-6">
+    <h2 class="text-lg font-bold text-wood mb-4 flex items-center gap-2"><i class="fa-solid fa-stopwatch"></i> Sessions & Gameplay</h2>
+    <div class="grid grid-cols-2 gap-4 max-w-lg">
+      <div class="form-group"><label class="form-label">Default Session Type</label>
+        <select id="sess-default-type" class="form-control">
+          <option value="Prepaid">Prepaid</option>
+          <option value="Postpaid">Postpaid</option>
+        </select>
+      </div>
+      <div class="form-group"><label class="form-label">Max Duration (hours)</label><input type="number" id="sess-max-hours" class="form-control" placeholder="0 = unlimited"></div>
+      <div class="form-group"><label class="form-label">Grace Period (minutes)</label><input type="number" id="sess-grace" class="form-control" placeholder="0 = lock immediately"></div>
+      <div class="form-group"><label class="form-label">Warning Before End (minutes)</label><input type="number" id="sess-warning" class="form-control" placeholder="5"></div>
+      <div class="form-group"><label class="form-label">Min Postpaid Charge (minutes)</label><input type="number" id="sess-min-postpaid" class="form-control" placeholder="30"></div>
+      <div class="form-group"><label class="form-label">Extra Controller Rate (₹/hr)</label><input type="number" step="0.01" id="sess-controller-rate" class="form-control" placeholder="0"></div>
+      <div class="form-group"><label class="form-label"><input type="checkbox" id="sess-allow-pause" class="accent-wood mr-1"> Allow Pause</label></div>
+      <div class="form-group"><label class="form-label"><input type="checkbox" id="sess-allow-transfer" class="accent-wood mr-1"> Allow Station Transfer</label></div>
+    </div>
+    <div class="mt-6"><button onclick="saveTab('sessions')" class="btn btn-primary"><i class="fa-solid fa-floppy-disk mr-1"></i> Save Session Settings</button></div>
+  </div>
+
+  <!-- TAB: PLAYERS -->
+  <div id="tab-players" class="settings-tab-pane hidden bg-parchment border border-slate-800 rounded-lg p-6">
+    <h2 class="text-lg font-bold text-wood mb-4 flex items-center gap-2"><i class="fa-solid fa-users"></i> Players & Loyalty</h2>
+    <div class="grid grid-cols-2 gap-4 max-w-lg">
+      <div class="form-group"><label class="form-label"><input type="checkbox" id="play-auto-register" class="accent-wood mr-1"> Auto-register on phone entry</label></div>
+      <div class="form-group"><label class="form-label">Points Per Play Hour</label><input type="number" id="play-points-hour" class="form-control" placeholder="10"></div>
+      <div class="form-group"><label class="form-label">Points Per ₹ Spent</label><input type="number" step="0.01" id="play-points-rupee" class="form-control" placeholder="1"></div>
+      <div class="border-t border-slate-800 col-span-2 pt-3"><p class="text-xs text-slate-400 font-cyber uppercase tracking-wider">Tier Thresholds (points)</p></div>
+      <div class="form-group"><label class="form-label">Bronze Threshold</label><input type="number" id="play-bronze-threshold" class="form-control" placeholder="0"></div>
+      <div class="form-group"><label class="form-label">Silver Threshold</label><input type="number" id="play-silver-threshold" class="form-control" placeholder="100"></div>
+      <div class="form-group"><label class="form-label">Gold Threshold</label><input type="number" id="play-gold-threshold" class="form-control" placeholder="300"></div>
+    </div>
+    <div class="mt-6"><button onclick="saveTab('players')" class="btn btn-primary"><i class="fa-solid fa-floppy-disk mr-1"></i> Save Player Settings</button></div>
+  </div>
+
   <!-- TAB: SYSTEM -->
   <div id="tab-system" class="settings-tab-pane hidden bg-parchment border border-slate-800 rounded-lg p-6">
     <h2 class="text-lg font-bold text-wood mb-4 flex items-center gap-2"><i class="fa-solid fa-gear"></i> System & SEO</h2>
@@ -275,11 +341,18 @@ if ($role !== 'SuperAdmin') {
       <div class="form-group"><label class="form-label">Time Format</label><input id="sys-time-format" class="form-control" placeholder="H:i"></div>
     </div>
 
+    <h3 class="text-sm font-bold text-wood mb-3 mt-6 border-t border-slate-800 pt-4">Data & Backup</h3>
+    <div class="grid grid-cols-2 gap-4 max-w-lg">
+      <div class="form-group"><label class="form-label">Data Retention (days)</label><input type="number" id="sys-retention" class="form-control" placeholder="365"></div>
+      <div class="form-group"><label class="form-label">Backup Time</label><input type="time" id="sys-backup-time" class="form-control" value="03:00"></div>
+    </div>
+
     <h3 class="text-sm font-bold text-wood mb-3 mt-6 border-t border-slate-800 pt-4">Maintenance</h3>
     <div class="flex flex-wrap gap-4 mb-4">
       <label class="flex items-center gap-1.5"><input type="checkbox" id="sys-maintenance" class="accent-wood"> Maintenance Mode (hides public site)</label>
       <label class="flex items-center gap-1.5"><input type="checkbox" id="sys-auto-backup" class="accent-wood"> Auto daily backup</label>
     </div>
+    <div class="col-span-2 max-w-lg form-group"><label class="form-label">Maintenance Message</label><textarea id="sys-maintenance-msg" class="form-control h-20" placeholder="We'll be back shortly!"></textarea></div>
 
     <div class="mt-6"><button onclick="saveTab('system')" class="btn btn-primary"><i class="fa-solid fa-floppy-disk mr-1"></i> Save System Settings</button></div>
   </div>

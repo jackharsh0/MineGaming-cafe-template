@@ -15,7 +15,9 @@
     "secondary_color": "#a0522d",
     "font_family": "Inter",
     "favicon_url": "",
-    "invoice_prefix": "INV-"
+    "invoice_prefix": "INV-",
+    "whatsapp_phone": "",
+    "cover_image_url": ""
   },
   "website": {
     "hero_title": "Where Console Meets the Felt",
@@ -57,7 +59,10 @@
     "contact_form_email": "",
     "announcement_banner": "",
     "announcement_banner_enabled": false,
-    "cookie_consent_enabled": false
+    "cookie_consent_enabled": false,
+    "show_live_status": true,
+    "show_pricing_table": true,
+    "footer_html": ""
   },
   "stations": {
     "display_names": {
@@ -79,7 +84,10 @@
     "decimal_places": 2,
     "rounding_mode": "nearest",
     "service_charge_percent": 0,
-    "discount_max_percent": 50
+    "discount_max_percent": 50,
+    "tax_inclusive": false,
+    "minimum_cafe_order": 0,
+    "invoice_due_days": 0
   },
   "notifications": {
     "sound_enabled": true,
@@ -100,6 +108,33 @@
     "footer_message": "",
     "auto_print": false
   },
+  "bookings": {
+    "auto_confirm_minutes": 0,
+    "max_days_advance": 30,
+    "min_notice_hours": 2,
+    "deposit_percent": 0,
+    "cancel_timeout_hours": 24,
+    "max_guests_per_booking": 10,
+    "notify_staff_on_booking": true
+  },
+  "sessions": {
+    "default_session_type": "Prepaid",
+    "max_duration_hours": 0,
+    "grace_period_minutes": 0,
+    "warning_before_end_minutes": 5,
+    "allow_pause": true,
+    "allow_transfer": true,
+    "min_postpaid_minutes": 30,
+    "controller_rate_per_extra": 0
+  },
+  "players": {
+    "auto_register_on_phone": false,
+    "points_per_hour": 10,
+    "points_per_rupee": 1,
+    "bronze_threshold": 0,
+    "silver_threshold": 100,
+    "gold_threshold": 300
+  },
   "system": {
     "page_title": "Soleila - Jodhpur's Premier Lounge",
     "meta_description": "Premium gaming lounge in Jodhpur with PS5, Xbox, and professional pool tables.",
@@ -108,6 +143,9 @@
     "timezone": "Asia/Kolkata",
     "date_format": "d/m/Y",
     "time_format": "H:i",
-    "auto_backup": false
+    "auto_backup": false,
+    "data_retention_days": 365,
+    "backup_time": "03:00",
+    "maintenance_message": ""
   }
 }

@@ -73,6 +73,8 @@ function populateAllTabs() {
   setVal('brand-secondary-color-text', s.brand?.secondary_color);
   setVal('brand-font-family', s.brand?.font_family);
   setVal('brand-favicon-url', s.brand?.favicon_url);
+  setVal('brand-whatsapp-phone', s.brand?.whatsapp_phone);
+  setVal('brand-cover-image', s.brand?.cover_image_url);
   if (s.brand?.logo_url) {
     const preview = document.getElementById('logo-preview');
     if (preview) { preview.src = BACKEND_URL + s.brand.logo_url; preview.classList.remove('hidden'); }
@@ -90,6 +92,9 @@ function populateAllTabs() {
   setVal('web-announcement', s.website?.announcement_banner);
   setVal('web-announcement-enabled', s.website?.announcement_banner_enabled);
   setVal('web-cookie-consent', s.website?.cookie_consent_enabled);
+  setVal('web-show-live-status', s.website?.show_live_status);
+  setVal('web-show-pricing', s.website?.show_pricing_table);
+  setVal('web-footer-html', s.website?.footer_html);
   setVal('web-loyalty-bronze', s.website?.loyalty_tier_descriptions?.bronze);
   setVal('web-loyalty-silver', s.website?.loyalty_tier_descriptions?.silver);
   setVal('web-loyalty-gold', s.website?.loyalty_tier_descriptions?.gold);
@@ -142,6 +147,9 @@ function populateAllTabs() {
   setVal('billing-rounding-mode', s.billing?.rounding_mode);
   setVal('billing-service-charge', s.billing?.service_charge_percent);
   setVal('billing-max-discount', s.billing?.discount_max_percent);
+  setVal('billing-tax-inclusive', s.billing?.tax_inclusive);
+  setVal('billing-cafe-min', s.billing?.minimum_cafe_order);
+  setVal('billing-invoice-due', s.billing?.invoice_due_days);
 
   // Notifications tab
   setVal('notif-sound-enabled', s.notifications?.sound_enabled);
@@ -155,6 +163,33 @@ function populateAllTabs() {
   setVal('sec-session-timeout', s.security?.session_timeout_minutes);
   setVal('sec-max-login', s.security?.max_login_attempts);
   setVal('sec-ip-whitelist', s.security?.maintenance_ip_whitelist);
+
+  // Bookings tab
+  setVal('book-auto-confirm', s.bookings?.auto_confirm_minutes);
+  setVal('book-max-days', s.bookings?.max_days_advance);
+  setVal('book-min-notice', s.bookings?.min_notice_hours);
+  setVal('book-deposit', s.bookings?.deposit_percent);
+  setVal('book-cancel-hours', s.bookings?.cancel_timeout_hours);
+  setVal('book-max-guests', s.bookings?.max_guests_per_booking);
+  setVal('book-notify-staff', s.bookings?.notify_staff_on_booking);
+
+  // Sessions tab
+  setVal('sess-default-type', s.sessions?.default_session_type);
+  setVal('sess-max-hours', s.sessions?.max_duration_hours);
+  setVal('sess-grace', s.sessions?.grace_period_minutes);
+  setVal('sess-warning', s.sessions?.warning_before_end_minutes);
+  setVal('sess-allow-pause', s.sessions?.allow_pause);
+  setVal('sess-allow-transfer', s.sessions?.allow_transfer);
+  setVal('sess-min-postpaid', s.sessions?.min_postpaid_minutes);
+  setVal('sess-controller-rate', s.sessions?.controller_rate_per_extra);
+
+  // Players tab
+  setVal('play-auto-register', s.players?.auto_register_on_phone);
+  setVal('play-points-hour', s.players?.points_per_hour);
+  setVal('play-points-rupee', s.players?.points_per_rupee);
+  setVal('play-bronze-threshold', s.players?.bronze_threshold);
+  setVal('play-silver-threshold', s.players?.silver_threshold);
+  setVal('play-gold-threshold', s.players?.gold_threshold);
 
   // Receipt tab
   setVal('receipt-show-logo', s.receipt?.show_logo);
@@ -171,6 +206,9 @@ function populateAllTabs() {
   setVal('sys-date-format', s.system?.date_format);
   setVal('sys-time-format', s.system?.time_format);
   setVal('sys-auto-backup', s.system?.auto_backup);
+  setVal('sys-retention', s.system?.data_retention_days);
+  setVal('sys-backup-time', s.system?.backup_time);
+  setVal('sys-maintenance-msg', s.system?.maintenance_message);
 }
 
 function setVal(id, val) {
@@ -244,7 +282,9 @@ async function saveTab(tabName) {
       primary_color: getVal('brand-primary-color'),
       secondary_color: getVal('brand-secondary-color'),
       font_family: getVal('brand-font-family'),
-      favicon_url: getVal('brand-favicon-url')
+      favicon_url: getVal('brand-favicon-url'),
+      whatsapp_phone: getVal('brand-whatsapp-phone'),
+      cover_image_url: getVal('brand-cover-image')
     };
   }
 
@@ -287,6 +327,9 @@ async function saveTab(tabName) {
       announcement_banner_enabled: !!getVal('web-announcement-enabled'),
       cookie_consent_enabled: !!getVal('web-cookie-consent'),
       social_links: socialLinks,
+      show_live_status: !!getVal('web-show-live-status'),
+      show_pricing_table: !!getVal('web-show-pricing'),
+      footer_html: getVal('web-footer-html'),
       loyalty_tier_descriptions: {
         bronze: getVal('web-loyalty-bronze'),
         silver: getVal('web-loyalty-silver'),
@@ -319,7 +362,10 @@ async function saveTab(tabName) {
       decimal_places: parseInt(getVal('billing-decimal-places')) || 2,
       rounding_mode: getVal('billing-rounding-mode'),
       service_charge_percent: parseFloat(getVal('billing-service-charge')) || 0,
-      discount_max_percent: parseInt(getVal('billing-max-discount')) || 50
+      discount_max_percent: parseInt(getVal('billing-max-discount')) || 50,
+      tax_inclusive: !!getVal('billing-tax-inclusive'),
+      minimum_cafe_order: parseFloat(getVal('billing-cafe-min')) || 0,
+      invoice_due_days: parseInt(getVal('billing-invoice-due')) || 0
     };
   }
 
@@ -351,6 +397,42 @@ async function saveTab(tabName) {
     };
   }
 
+  if (tabName === 'bookings') {
+    payload.bookings = {
+      auto_confirm_minutes: parseInt(getVal('book-auto-confirm')) || 0,
+      max_days_advance: parseInt(getVal('book-max-days')) || 30,
+      min_notice_hours: parseInt(getVal('book-min-notice')) || 2,
+      deposit_percent: parseFloat(getVal('book-deposit')) || 0,
+      cancel_timeout_hours: parseInt(getVal('book-cancel-hours')) || 24,
+      max_guests_per_booking: parseInt(getVal('book-max-guests')) || 10,
+      notify_staff_on_booking: !!getVal('book-notify-staff')
+    };
+  }
+
+  if (tabName === 'sessions') {
+    payload.sessions = {
+      default_session_type: getVal('sess-default-type'),
+      max_duration_hours: parseInt(getVal('sess-max-hours')) || 0,
+      grace_period_minutes: parseInt(getVal('sess-grace')) || 0,
+      warning_before_end_minutes: parseInt(getVal('sess-warning')) || 5,
+      allow_pause: !!getVal('sess-allow-pause'),
+      allow_transfer: !!getVal('sess-allow-transfer'),
+      min_postpaid_minutes: parseInt(getVal('sess-min-postpaid')) || 30,
+      controller_rate_per_extra: parseFloat(getVal('sess-controller-rate')) || 0
+    };
+  }
+
+  if (tabName === 'players') {
+    payload.players = {
+      auto_register_on_phone: !!getVal('play-auto-register'),
+      points_per_hour: parseInt(getVal('play-points-hour')) || 10,
+      points_per_rupee: parseFloat(getVal('play-points-rupee')) || 1,
+      bronze_threshold: parseInt(getVal('play-bronze-threshold')) || 0,
+      silver_threshold: parseInt(getVal('play-silver-threshold')) || 100,
+      gold_threshold: parseInt(getVal('play-gold-threshold')) || 300
+    };
+  }
+
   if (tabName === 'system') {
     payload.system = {
       page_title: getVal('sys-page-title'),
@@ -360,7 +442,10 @@ async function saveTab(tabName) {
       timezone: getVal('sys-timezone'),
       date_format: getVal('sys-date-format'),
       time_format: getVal('sys-time-format'),
-      auto_backup: !!getVal('sys-auto-backup')
+      auto_backup: !!getVal('sys-auto-backup'),
+      data_retention_days: parseInt(getVal('sys-retention')) || 365,
+      backup_time: getVal('sys-backup-time'),
+      maintenance_message: getVal('sys-maintenance-msg')
     };
   }
 
