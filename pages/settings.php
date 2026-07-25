@@ -66,7 +66,7 @@ if ($role !== 'SuperAdmin') {
           <option value="System UI">System UI</option>
         </select>
       </div>
-      <div class="form-group"><label class="form-label">Favicon</label><input type="file" id="favicon-upload" accept="image/png,image/x-icon" class="text-xs text-slate-400"></div>
+      <div class="form-group"><label class="form-label">Favicon URL</label><input id="brand-favicon-url" class="form-control" placeholder="https://soleila.in/favicon.ico"></div>
     </div>
     <div class="mt-6"><button onclick="saveTab('brand')" class="btn btn-primary"><i class="fa-solid fa-floppy-disk mr-1"></i> Save Brand Settings</button></div>
   </div>
@@ -228,7 +228,7 @@ if ($role !== 'SuperAdmin') {
     <div class="grid grid-cols-2 gap-4 max-w-lg">
       <div class="form-group"><label class="form-label"><input type="checkbox" id="notif-sound-enabled" class="accent-wood mr-1"> Sound Effects Enabled</label></div>
       <div class="form-group"><label class="form-label"><input type="checkbox" id="notif-checkout-bell" class="accent-wood mr-1"> Ring bell on checkout</label></div>
-      <div class="form-group"><label class="form-label">Timer End Sound</label><input type="file" id="notif-timer-sound" accept="audio/mpeg" class="text-xs text-slate-400"><p class="text-[10px] text-slate-500">MP3 file for timer alerts</p></div>
+      <div class="form-group"><label class="form-label">Timer End Sound URL</label><input id="notif-timer-sound-url" class="form-control" placeholder="https://example.com/alert.mp3"></div>
       <div class="col-span-2 form-group"><label class="form-label">Slack Webhook URL (low-stock alerts)</label><input id="notif-slack-webhook" class="form-control" placeholder="https://hooks.slack.com/services/..."></div>
       <div class="col-span-2 form-group"><label class="form-label">Email for Daily Reports</label><input id="notif-email-alerts" class="form-control" placeholder="manager@soleila.in"></div>
       <div class="col-span-2 form-group"><label class="form-label">SMS API Key (Twilio / provider)</label><input id="notif-sms-key" class="form-control" placeholder="API key for SMS confirmations"></div>

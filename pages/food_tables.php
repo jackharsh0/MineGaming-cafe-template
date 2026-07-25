@@ -1021,7 +1021,7 @@ async function applyCoupon() {
   const code = document.getElementById('checkout-coupon-code').value.trim();
   if (!code) { showToast('Enter coupon code', 'error'); return; }
   try {
-    const data = await apiFetch(`/billing/coupon/verify?code=${code}&subtotal=${activeCheckoutTotals.subtotal}`);
+    const data = await apiFetch(`/billing/coupons/validate/${code}?subtotal=${activeCheckoutTotals.subtotal}`);
     if (data.success) {
       const discount = parseFloat(data.discount);
       const tax = (activeCheckoutTotals.subtotal - discount) * (activeCheckoutTotals.tax_rate / 100);

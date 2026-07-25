@@ -72,6 +72,7 @@ function populateAllTabs() {
   setVal('brand-secondary-color', s.brand?.secondary_color);
   setVal('brand-secondary-color-text', s.brand?.secondary_color);
   setVal('brand-font-family', s.brand?.font_family);
+  setVal('brand-favicon-url', s.brand?.favicon_url);
   if (s.brand?.logo_url) {
     const preview = document.getElementById('logo-preview');
     if (preview) { preview.src = BACKEND_URL + s.brand.logo_url; preview.classList.remove('hidden'); }
@@ -148,6 +149,7 @@ function populateAllTabs() {
   setVal('notif-slack-webhook', s.notifications?.slack_webhook_url);
   setVal('notif-email-alerts', s.notifications?.email_alerts);
   setVal('notif-sms-key', s.notifications?.sms_api_key);
+  setVal('notif-timer-sound-url', s.notifications?.sound_timer_end);
 
   // Security tab
   setVal('sec-session-timeout', s.security?.session_timeout_minutes);
@@ -241,7 +243,8 @@ async function saveTab(tabName) {
       copyright_text: getVal('brand-copyright'),
       primary_color: getVal('brand-primary-color'),
       secondary_color: getVal('brand-secondary-color'),
-      font_family: getVal('brand-font-family')
+      font_family: getVal('brand-font-family'),
+      favicon_url: getVal('brand-favicon-url')
     };
   }
 
@@ -326,7 +329,8 @@ async function saveTab(tabName) {
       signal_bell_on_checkout: !!getVal('notif-checkout-bell'),
       slack_webhook_url: getVal('notif-slack-webhook'),
       email_alerts: getVal('notif-email-alerts'),
-      sms_api_key: getVal('notif-sms-key')
+      sms_api_key: getVal('notif-sms-key'),
+      sound_timer_end: getVal('notif-timer-sound-url')
     };
   }
 
@@ -384,7 +388,7 @@ function setupLogoUpload() {
     const formData = new FormData();
     formData.append('logo', file);
     try {
-      const res = await fetch(BACKEND_URL + '/api/settings/upload-logo', { method: 'POST', body: formData });
+      const res = await fetch(BACKEND_URL + '/settings/upload-logo', { method: 'POST', body: formData });
       const data = await res.json();
       if (data.success) {
         const preview = document.getElementById('logo-preview');
