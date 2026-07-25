@@ -399,7 +399,7 @@ const generateInvoicePDF = (data) => {
 
     // Footer
     doc.moveDown(1.5);
-    doc.font('Times-Italic').fontSize(8.5).fillColor('#4a2e1b').text('Thank you for playing at Soleila!', { align: 'center', paragraphGap: 1 });
+    doc.font('Times-Italic').fontSize(8.5).fillColor('#4a2e1b').text('Thank you for playing at MineGaming!', { align: 'center', paragraphGap: 1 });
     doc.font('Times-Roman').fontSize(7.5).text('Please visit again!', { align: 'center' });
 
     doc.end();
@@ -424,7 +424,7 @@ const applyAntiBanRandomization = (text) => {
   const friendlySignatures = [
     "Have a fantastic day! 🎮",
     "Enjoy your gaming session! ⚡",
-    "Thanks for choosing Soleila! 🌟",
+    "Thanks for choosing MineGaming! 🌟",
     "Let us know if you need anything at the desk! 🛎️",
     "Happy gaming! 🏆",
     "Keep leveling up! 🚀"
@@ -614,7 +614,7 @@ const sendWhatsAppMessage = async (to, body) => {
 
 const sendWhatsAppInvoice = async (to, invoiceData) => {
   const pdfBase64 = await generateInvoicePDF(invoiceData);
-  const captionText = `*🎮 Receipt from Soleila Gaming Zone* 🎮\n` +
+  const captionText = `*🎮 MineGaming Receipt* 🎮\n` +
     `Thank you for your visit! Attached is your invoice #${invoiceData.receiptId} for Rs. ${parseFloat(invoiceData.total).toFixed(2)}.`;
   
   await queueWhatsAppMessage(

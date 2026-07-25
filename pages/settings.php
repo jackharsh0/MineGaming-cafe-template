@@ -43,7 +43,7 @@ if ($role !== 'SuperAdmin') {
           <p class="text-[10px] text-slate-500 mt-0.5">Max 2MB. PNG or JPG.</p>
         </div>
       </div>
-      <div class="form-group"><label class="form-label">Business Name</label><input id="brand-business-name" class="form-control" placeholder="Soleila"></div>
+      <div class="form-group"><label class="form-label">Business Name</label><input id="brand-business-name" class="form-control" placeholder="MineGaming"></div>
       <div class="form-group"><label class="form-label">Tagline</label><input id="brand-tagline" class="form-control" placeholder="Jodhpur's Premier Lounge"></div>
       <div class="col-span-2 form-group"><label class="form-label">Address</label><input id="brand-address" class="form-control" placeholder="Sardarpura, Jodhpur"></div>
       <div class="form-group"><label class="form-label">Phone</label><input id="brand-phone" class="form-control" placeholder="+91 98765-43210"></div>
@@ -329,7 +329,7 @@ if ($role !== 'SuperAdmin') {
   <div id="tab-system" class="settings-tab-pane hidden bg-parchment border border-slate-800 rounded-lg p-6">
     <h2 class="text-lg font-bold text-wood mb-4 flex items-center gap-2"><i class="fa-solid fa-gear"></i> System & SEO</h2>
     <div class="grid grid-cols-2 gap-4 max-w-3xl">
-      <div class="col-span-2 form-group"><label class="form-label">Browser Page Title</label><input id="sys-page-title" class="form-control" placeholder="Soleila - Premier Lounge"></div>
+      <div class="col-span-2 form-group"><label class="form-label">Browser Page Title</label><input id="sys-page-title" class="form-control" placeholder="MineGaming - Gaming Lounge"></div>
       <div class="col-span-2 form-group"><label class="form-label">Meta Description (SEO)</label><textarea id="sys-meta-desc" class="form-control h-20" placeholder="Premium gaming lounge..."></textarea></div>
       <div class="col-span-2 form-group"><label class="form-label">OG Image URL (social share preview)</label><input id="sys-og-image" class="form-control" placeholder="https://soleila.in/og-image.jpg"></div>
     </div>

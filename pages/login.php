@@ -104,7 +104,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Soleila — Portal Login</title>
+  <title>MineGaming — Portal Login</title>
   <link rel="stylesheet" href="../css/retro_wood.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
@@ -418,7 +418,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       <div class="login-hero-icon">
         <i class="fa-solid fa-gamepad"></i>
       </div>
-      <h1>Soleila</h1>
+      <h1>MineGaming</h1>
       <p>Member Portal</p>
     </div>
 

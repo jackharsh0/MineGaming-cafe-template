@@ -1,5 +1,5 @@
 <?php
-// config.php - Smart Configuration for Soleila frontend
+// config.php - Dynamic frontend configuration
 
 // Allow override via environment variable (set in server config / .htaccess)
 $envBackendUrl = getenv('BACKEND_URL');
@@ -63,7 +63,7 @@ function setting_bool($key, $default = false) {
 }
 
 // Convenience constants
-define('SITE_NAME', setting('brand.business_name', 'Soleila'));
+define('SITE_NAME', setting('brand.business_name', 'MineGaming'));
 define('SITE_TAGLINE', setting('brand.tagline', 'Jodhpur\'s Premier Lounge'));
 define('SITE_ADDRESS', setting('brand.address', ''));
 define('SITE_PHONE', setting('brand.phone', ''));

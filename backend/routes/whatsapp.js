@@ -93,13 +93,13 @@ router.post('/send-test', verifyToken, requireRole(['SuperAdmin', 'Manager']), a
       await logAudit(req.user.id, 'WhatsApp Test Send', `Queued test low play hours alert to ${to}`);
       res.json({ success: true, message: 'Test low play hours alert queued successfully!' });
     } else if (type === 'loyalty_tier') {
-      const promoMsg = `*🎉 Tier Upgraded! 🎉*\n\nCongratulations! You have been upgraded to the *Gold Tier* at Soleila Gaming Lounge!\n\nYou now enjoy a *15% flat discount* on all game sessions and priority booking. 🏆`;
+      const promoMsg = `*🎉 Tier Upgraded! 🎉*\n\nCongratulations! You have been upgraded to the *Gold Tier* at MineGaming!\n\nYou now enjoy a *15% flat discount* on all game sessions and priority booking. 🏆`;
       await sendWhatsAppMessage(to, promoMsg);
       await logAudit(req.user.id, 'WhatsApp Test Send', `Queued test loyalty tier promo to ${to}`);
       res.json({ success: true, message: 'Test loyalty tier promo queued successfully!' });
     } else {
       // Default custom message
-      const textMsg = message || 'Hello from Soleila Gaming Lounge! This is a test message to verify our WhatsApp billing integration.';
+      const textMsg = message || 'Hello from MineGaming! This is a test message to verify our WhatsApp billing integration.';
       await sendWhatsAppMessage(to, textMsg);
       await logAudit(req.user.id, 'WhatsApp Test Send', `Queued custom test text message to ${to}`);
       res.json({ success: true, message: 'Test text message queued successfully!' });
@@ -234,7 +234,7 @@ router.post('/chats/:jid/send', verifyToken, requireRole(['SuperAdmin', 'Manager
       await logAudit(req.user.id, 'WhatsApp Send Chat', `Queued low play hours alert to ${jid}`);
       res.json({ success: true, message: 'Low play hours alert queued successfully' });
     } else if (type === 'loyalty_tier') {
-      const promoMsg = `*🎉 Tier Upgraded! 🎉*\n\nCongratulations! You have been upgraded to the *Gold Tier* at Soleila Gaming Lounge!\n\nYou now enjoy a *15% flat discount* on all game sessions and priority booking. 🏆`;
+      const promoMsg = `*🎉 Tier Upgraded! 🎉*\n\nCongratulations! You have been upgraded to the *Gold Tier* at MineGaming!\n\nYou now enjoy a *15% flat discount* on all game sessions and priority booking. 🏆`;
       await queueWhatsAppMessage(jid, 'text', promoMsg);
       await logAudit(req.user.id, 'WhatsApp Send Chat', `Queued loyalty tier promo to ${jid}`);
       res.json({ success: true, message: 'Loyalty tier promo queued successfully' });

@@ -155,7 +155,7 @@ include 'header.php';
           </div>
           <div class="form-group" id="test-message-group">
             <label class="form-label text-xs uppercase" for="test-message">Message Text</label>
-            <textarea id="test-message" class="form-control h-20" placeholder="Hello from Soleila Gaming Lounge!">Hello from Soleila Gaming Lounge! This is a test message to verify our WhatsApp billing integration.</textarea>
+            <textarea id="test-message" class="form-control h-20" placeholder="Hello from MineGaming!">Hello from MineGaming! This is a test message to verify our WhatsApp billing integration.</textarea>
           </div>
           
           <button type="submit" id="btn-send-test" class="w-full btn btn-primary py-3 text-xs uppercase font-cyber tracking-wider">

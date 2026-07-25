@@ -1,7 +1,7 @@
 {
   "brand": {
-    "business_name": "Soleila",
-    "tagline": "Jodhpur's Premier Gaming & Recreation Lounge",
+    "business_name": "MineGaming",
+    "tagline": "Gaming & Recreation Lounge",
     "hero_subtitle": "Where Console Meets the Felt",
     "address": "Sardarpura, Jodhpur, Rajasthan",
     "phone": "+91 98765-43210",
@@ -136,8 +136,8 @@
     "gold_threshold": 300
   },
   "system": {
-    "page_title": "Soleila - Jodhpur's Premier Lounge",
-    "meta_description": "Premium gaming lounge in Jodhpur with PS5, Xbox, and professional pool tables.",
+    "page_title": "MineGaming - Gaming Lounge",
+    "meta_description": "Premium gaming lounge with PS5, Xbox, and professional pool tables.",
     "og_image_url": "",
     "maintenance_mode": false,
     "timezone": "Asia/Kolkata",

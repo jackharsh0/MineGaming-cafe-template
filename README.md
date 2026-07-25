@@ -10,7 +10,7 @@
 <br>
 
 <div align="center">
-  <h1>🎮 Soleila — Gaming Lounge Management System</h1>
+  <h1>🎮 MineGaming — Gaming Cafe Management Template</h1>
   <p><strong>Everything you need to run a gaming lounge, LAN center, or e-sport cafe.</strong></p>
   <p>Station tracking · Session timers · POS billing · Player loyalty · WhatsApp receipts · Revenue analytics · 70+ customizable settings</p>
 
@@ -383,7 +383,7 @@ Open **http://localhost:1000** — the frontend auto-detects the backend URL.
 | Attendant | `attendant` | `attendant123` |
 | Customer | Register on login page | — |
 
-> Quick-login buttons appear automatically on localhost.
+> Quick-login buttons appear automatically on localhost. Change the business name in Settings → Brand.
 
 ---
 

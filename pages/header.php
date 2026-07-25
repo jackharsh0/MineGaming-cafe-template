@@ -161,7 +161,7 @@ function is_active($page, $current_page) {
   <aside class="sidebar">
     <a href="dashboard.php" class="sidebar-brand hover:opacity-80 transition duration-300">
       <i class="fa-solid fa-gamepad text-wood" style="animation: swivel-3d 6s ease-in-out infinite;"></i>
-      <span>Soleila</span>
+      <span>MineGaming</span>
     </a>
     
     <nav class="flex-grow">

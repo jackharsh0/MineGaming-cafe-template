@@ -13,7 +13,7 @@ $phone = $_SESSION['username'] ?? '';
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Soleila - Customer Dashboard</title>
+  <title>MineGaming - Player Dashboard</title>
   <!-- Tailwind CSS CDN -->
   <script src="../js/tailwindcss.js"></script>
   <script>
@@ -91,7 +91,7 @@ $phone = $_SESSION['username'] ?? '';
       <div class="flex items-center gap-3">
         <a href="customer_dashboard.php" class="flex items-center gap-3 hover:opacity-80 transition duration-300">
           <i class="fa-solid fa-gamepad text-wood text-2xl" style="animation: swivel-3d 6s ease-in-out infinite;"></i>
-          <span class="font-cyber text-xl font-extrabold tracking-widest text-wood uppercase">Soleila</span>
+          <span class="font-cyber text-xl font-extrabold tracking-widest text-wood uppercase">MineGaming</span>
         </a>
         <span class="hidden md:inline-block text-[10px] bg-kraft border border-wood/40 text-wood px-2 py-0.5 rounded font-mono">PLAYER PORTAL</span>
       </div>
@@ -251,7 +251,7 @@ $phone = $_SESSION['username'] ?? '';
 
     <!-- Footer -->
     <footer class="bg-slate-950 border-t border-slate-900 py-6 text-center text-[10px] text-slate-400">
-      <p>© 2026 Soleila. All rights reserved.</p>
+      <p>© 2026 MineGaming. All rights reserved.</p>
     </footer>
   </div>
 
