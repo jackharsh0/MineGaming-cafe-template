@@ -25,10 +25,10 @@
   <br>
 
   <p>
-    <img src="https://img.shields.io/github/license/jackharsh0/gaming-zone?style=flat-square" alt="License">
-    <img src="https://img.shields.io/github/last-commit/jackharsh0/gaming-zone?style=flat-square" alt="Last Commit">
-    <img src="https://img.shields.io/github/repo-size/jackharsh0/gaming-zone?style=flat-square" alt="Repo Size">
-    <img src="https://img.shields.io/github/stars/jackharsh0/gaming-zone?style=flat-square" alt="Stars">
+    <img src="https://img.shields.io/github/license/jackharsh0/MineGaming-cafe-template?style=flat-square" alt="License">
+    <img src="https://img.shields.io/github/last-commit/jackharsh0/MineGaming-cafe-template?style=flat-square" alt="Last Commit">
+    <img src="https://img.shields.io/github/repo-size/jackharsh0/MineGaming-cafe-template?style=flat-square" alt="Repo Size">
+    <img src="https://img.shields.io/github/stars/jackharsh0/MineGaming-cafe-template?style=flat-square" alt="Stars">
     <img src="https://img.shields.io/badge/PRs-welcome-brightgreen?style=flat-square" alt="PRs Welcome">
   </p>
 </div>
@@ -452,14 +452,27 @@ Contributions are welcome! Open an issue first to discuss changes.
   <h3>⭐ Star this repo if you find it useful</h3>
   <p>Built for gaming lounge operators, by operators.</p>
   <p>
-    <a href="https://github.com/jackharsh0/gaming-zone/issues">Report Bug</a> •
-    <a href="https://github.com/jackharsh0/gaming-zone/issues">Request Feature</a> •
-    <a href="https://github.com/jackharsh0/gaming-zone">GitHub</a>
+    <a href="https://github.com/jackharsh0/MineGaming-cafe-template/issues">Report Bug</a> •
+    <a href="https://github.com/jackharsh0/MineGaming-cafe-template/issues">Request Feature</a> •
+    <a href="https://github.com/jackharsh0/MineGaming-cafe-template">GitHub</a>
   </p>
   <br>
   <p>
-    <img src="https://img.shields.io/github/license/jackharsh0/gaming-zone?style=flat-square" alt="MIT">
-    <img src="https://img.shields.io/github/last-commit/jackharsh0/gaming-zone?style=flat-square" alt="Last Commit">
-    <img src="https://img.shields.io/github/repo-size/jackharsh0/gaming-zone?style=flat-square" alt="Size">
+    <img src="https://img.shields.io/github/license/jackharsh0/MineGaming-cafe-template?style=flat-square" alt="MIT">
+    <img src="https://img.shields.io/github/last-commit/jackharsh0/MineGaming-cafe-template?style=flat-square" alt="Last Commit">
+    <img src="https://img.shields.io/github/repo-size/jackharsh0/MineGaming-cafe-template?style=flat-square" alt="Size">
   </p>
+</div>
+
+---
+
+<div align="center">
+  <h3>💼 Need Help Setting Up?</h3>
+  <p>Paid setup, customization, and deployment assistance available.</p>
+  <p>
+    <a href="https://wa.me/919414136480?text=Hi!%20I%20need%20help%20setting%20up%20MineGaming%20cafe%20template">
+      <img src="https://img.shields.io/badge/WhatsApp-25D366?style=for-the-badge&logo=whatsapp&logoColor=white" alt="WhatsApp">
+    </a>
+  </p>
+  <p><strong>+91 94141 36480</strong></p>
 </div>

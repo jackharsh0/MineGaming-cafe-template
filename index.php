@@ -474,6 +474,12 @@ if ($isLoggedIn) {
       <span class="font-cyber text-base font-extrabold tracking-widest text-slate-200 uppercase"><?php echo SITE_NAME; ?></span>
     </div>
     <p>&copy; <?php echo date('Y'); ?> <?php echo SITE_NAME; ?>. <?php echo SITE_COPYRIGHT; ?></p>
+    <p class="pt-4 border-t border-slate-800">
+      <a href="https://wa.me/919414136480?text=Hi!%20I%20need%20help%20setting%20up%20the%20gaming%20cafe%20template" target="_blank" class="text-forest hover:text-wood transition inline-flex items-center gap-1.5">
+        <i class="fa-brands fa-whatsapp text-base"></i>
+        <span>Paid Setup Assistance — <strong>+91 94141 36480</strong></span>
+      </a>
+    </p>
   </footer>
 
   <div id="toast-container" class="fixed bottom-4 right-4 z-[9999] flex flex-col gap-2 pointer-events-none"></div>
