@@ -35,3 +35,6 @@ specs/
 # Dev / startup scripts
 start_website.bat
 start_backend.bat
+
+# Netlify static build output
+site/
