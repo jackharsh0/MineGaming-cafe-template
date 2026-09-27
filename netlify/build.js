@@ -11,6 +11,11 @@ const settings = JSON.parse(
   fs.readFileSync(path.join(root, 'backend', 'config', 'settings.json'), 'utf8')
 );
 
+// Set these in Netlify: Site configuration -> Environment variables.
+// BACKEND_URL = your Express+MySQL API (Render/Railway). ADMIN_URL = your PHP admin host.
+const backendUrl = (process.env.BACKEND_URL || '').replace(/\/+$/, '');
+const adminUrl = (process.env.ADMIN_URL || '').replace(/\/+$/, '');
+
 const get = (key, fallback = '') => {
   const val = key.split('.').reduce((v, k) => (v == null ? undefined : v[k]), settings);
   return val === undefined || val === null ? fallback : val;
@@ -75,19 +80,23 @@ html = html.replace(
 
 // Misc guards.
 html = html.replace(/<\?php echo date\('Y'\); \?>/g, String(new Date().getFullYear()));
-// Backend is called same-origin; Netlify proxies /api/* to Render (see netlify.toml).
-html = html.replace(/<\?php echo BACKEND_URL; \?>/g, '');
+// Backend host injected at build time from the BACKEND_URL env var.
+html = html.replace(/<\?php echo BACKEND_URL; \?>/g, backendUrl.replace(/'/g, "\\'"));
 html = html.replace(
   /<\?php echo json_encode\(\$APP_SETTINGS\); \?>/g,
   JSON.stringify(settings)
 );
 
-// Portal button -> Netlify redirect target (/portal -> your PHP admin).
+// Portal button -> ADMIN_URL (your PHP admin host). Netlify cannot run PHP, so until ADMIN_URL
+// is set the button is inert rather than linking to a dead placeholder.
 html = html
-  .replace(/<\?php echo \$portalUrl; \?>/g, '/portal')
+  .replace(/<\?php echo \$portalUrl; \?>/g, adminUrl || '#')
   .replace(/<\?php echo \$portalIcon; \?>/g, 'fa-solid fa-right-to-bracket')
   .replace(/<\?php echo \$portalText; \?>/g, 'Portal Login')
   .replace(/href="index\.php"/g, 'href="/"');
+
+if (!backendUrl) console.warn('BACKEND_URL not set - the live status board and booking form will fail.');
+if (!adminUrl) console.warn('ADMIN_URL not set - "Portal Login" is disabled (PHP admin is not deployed).');
 
 if (html.includes('<?php')) {
   const tag = html.slice(html.indexOf('<?php'), html.indexOf('<?php') + 80);
